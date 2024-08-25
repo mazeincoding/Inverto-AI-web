@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 
 export function SocialIcons({ className }: { className?: string }) {
   const social_links = [
-    { href: "https://x.com/InvertoAI", Icon: FaTwitter },
-    { href: "https://github.com/mazeincoding/Inverto-AI", Icon: FaGithub },
+    { href: "https://x.com/standsync", Icon: FaTwitter },
+    { href: "https://github.com/mazeincoding/standsync", Icon: FaGithub },
   ];
 
   return (
