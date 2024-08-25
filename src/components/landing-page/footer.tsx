@@ -20,7 +20,7 @@ export function Footer() {
         <div className="flex flex-col items-center md:items-end space-y-2">
           <SocialIcons />
           <p className="text-sm text-muted-foreground text-center md:text-right">
-            © {new Date().getFullYear()} Inverto AI. All rights reserved.
+            © {new Date().getFullYear()} StandSync. All rights reserved.
           </p>
         </div>
       </div>
