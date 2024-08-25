@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { subscribe_to_waitlist } from "@/actions/send-email";
 import { MailIcon, X } from "lucide-react";
+import Link from "next/link";
 
 export function HeroSection() {
   const [email, set_email] = useState("");
@@ -105,6 +106,9 @@ function EmailForm({
           </Button>
         </div>
       </form>
+      <p className="text-center">
+        Already invited? <Link href="/login">Login</Link>
+      </p>
       {message && (
         <p
           className={`text-center flex items-center gap-2 justify-center ${

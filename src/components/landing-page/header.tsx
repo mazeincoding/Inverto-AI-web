@@ -5,6 +5,7 @@ import { SocialIcons } from "@/components/social-icons";
 import { WaitlistDialog } from "./waitlist-dialog";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "./theme-toggle";
+import Link from "next/link";
 
 export function Header() {
   const [dialog_open, set_dialog_open] = useState(false);
@@ -16,6 +17,11 @@ export function Header() {
         <SocialIcons className="hidden sm:block" />
         <Separator orientation="vertical" className="h-6 hidden sm:block" />
         <ThemeToggle />
+        <Link href="/login">
+          <Button variant="outline" className="rounded-full">
+            Login
+          </Button>
+        </Link>
         <Button className="rounded-full" onClick={() => set_dialog_open(true)}>
           Join Waitlist
         </Button>
