@@ -16,7 +16,7 @@ export function FeaturesSection() {
 
   return (
     <div ref={section_ref} className="w-full flex gap-32 flex-col">
-      <FeatureItem scrollYProgress={scrollYProgress} index={0}>
+      <FeatureItem>
         <FeatureHeader>
           <div className="bg-primary w-16 h-16 rounded-full flex items-center justify-center">
             <Sparkles className="text-white h-8 w-8" />
@@ -104,14 +104,18 @@ function FeatureItem({
   index,
 }: {
   children: React.ReactNode;
-  scrollYProgress: MotionValue<number>;
-  index: number;
+  scrollYProgress?: MotionValue<number>;
+  index?: number;
 }) {
   const opacity = useTransform(
-    scrollYProgress,
-    [index * 0.25, index * 0.25 + 0.125, index * 0.25 + 0.25],
+    scrollYProgress || new MotionValue(),
+    [(index ?? 0) * 0.25, (index ?? 0) * 0.25 + 0.125, (index ?? 0) * 0.25 + 0.25],
     [0.25, 1, 1]
   );
+
+  if (!scrollYProgress || index === undefined) {
+    return <div className="flex flex-col gap-6">{children}</div>;
+  }
 
   return (
     <motion.div style={{ opacity }} className="flex flex-col gap-6">
