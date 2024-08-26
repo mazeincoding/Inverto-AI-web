@@ -223,3 +223,21 @@ export async function verify_code(email: string, code: string) {
     return { error: "Verification failed. Please try again" };
   }
 }
+
+export async function logout(): Promise<{ success: string }> {
+  const cookieStore = cookies();
+  const session_token = cookieStore.get("session_token")?.value;
+
+  if (session_token) {
+    // Remove the session from the database
+    await supabase
+      .from("user_sessions")
+      .delete()
+      .eq("token", session_token);
+
+    // Clear the session cookie
+    cookieStore.delete("session_token");
+  }
+
+  return { success: "Logged out successfully" };
+}
