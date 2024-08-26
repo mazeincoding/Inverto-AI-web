@@ -138,7 +138,7 @@ const PlaygroundContent: React.FC = () => {
           <p className="text-sm text-muted-foreground text-center">
             {has_camera 
               ? "The timer will automatically start when you enter a handstand and stop when you exit."
-              : "No camera detected. You can still use the timer manually."}
+              : "It looks like your device doesn't have a camera. You can still use the timer manually."}
           </p>
         </CardContent>
       </Card>
