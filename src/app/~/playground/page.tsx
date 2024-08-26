@@ -16,6 +16,7 @@ const PlaygroundContent: React.FC = () => {
   const [is_front_camera, set_is_front_camera] = useState(true);
   const [error, set_error] = useState<string | null>(null);
   const [has_camera, set_has_camera] = useState<boolean | null>(null);
+  const [orientation, set_orientation] = useState<'portrait' | 'landscape'>('portrait');
   const webcam_ref = useRef<Webcam>(null);
 
   const format_time = (time: number): string => {
@@ -39,8 +40,21 @@ const PlaygroundContent: React.FC = () => {
     }
   };
 
+  const update_orientation = () => {
+    if (window.screen.orientation) {
+      set_orientation(window.screen.orientation.type.startsWith('portrait') ? 'portrait' : 'landscape');
+    } else if (window.orientation !== undefined) {
+      set_orientation(Math.abs(window.orientation as number) === 90 ? 'landscape' : 'portrait');
+    }
+  };
+
   useEffect(() => {
     check_camera_availability();
+    update_orientation();
+    window.addEventListener('orientationchange', update_orientation);
+    return () => {
+      window.removeEventListener('orientationchange', update_orientation);
+    };
   }, []);
 
   const handle_start_stop = async (): Promise<void> => {
@@ -97,12 +111,16 @@ const PlaygroundContent: React.FC = () => {
           {is_session_active && (
             <div className="space-y-4">
               {has_camera ? (
-                <div className="relative aspect-video">
+                <div className={cn(
+                  "relative",
+                  orientation === 'portrait' ? "aspect-[9/16]" : "aspect-video"
+                )}>
                   <Webcam
                     ref={webcam_ref}
                     mirrored={is_front_camera}
                     videoConstraints={{
                       facingMode: is_front_camera ? "user" : "environment",
+                      aspectRatio: orientation === 'portrait' ? 9/16 : 16/9,
                     }}
                     onUserMediaError={() =>
                       set_error(
