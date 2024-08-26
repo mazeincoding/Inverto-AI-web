@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/logo";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { initiate_login } from "@/actions/auth";
+import { useRouter, useSearchParams } from "next/navigation";
+import { initiate_login, verify_magic_link } from "@/actions/auth";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -16,7 +16,36 @@ export default function LoginPage() {
     content: string;
   } | null>(null);
   const router = useRouter();
+  const search_params = useSearchParams();
   const [is_loading, set_is_loading] = useState(false);
+
+  useEffect(() => {
+    const token = search_params.get("token");
+    if (token) {
+      handle_magic_link(token);
+    } else {
+      // Check if the user is already logged in
+      const session_token = document.cookie.replace(/(?:(?:^|.*;\s*)session_token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+      if (session_token) {
+        router.push("/~");
+      }
+    }
+  }, [search_params]);
+
+  const handle_magic_link = async (token: string) => {
+    set_is_loading(true);
+    const result = await verify_magic_link(token);
+    if ("error" in result) {
+      set_message({ type: "error", content: result.error });
+    } else {
+      // Set the session token as a cookie using JavaScript
+      document.cookie = `session_token=${result.session_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict; ${process.env.NODE_ENV === "production" ? "Secure" : ""}`;
+
+      set_message({ type: "success", content: "Login successful" });
+      router.push("/~");
+    }
+    set_is_loading(false);
+  };
 
   const handle_submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -28,7 +57,6 @@ export default function LoginPage() {
       set_message({ type: "error", content: result.error });
     } else if ("success" in result) {
       set_message({ type: "success", content: result.success });
-      // Redirect to verification page
       router.push(`/verify?email=${encodeURIComponent(email)}`);
     }
     set_is_loading(false);

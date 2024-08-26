@@ -5,6 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "crypto";
 import nodemailer from "nodemailer";
 import { cookies } from "next/headers";
+import { User } from "@/types/user";
+import { send_email } from "@/utils/email";
 
 const email_schema = z.object({
   email: z.string().email("Invalid email address"),
@@ -18,28 +20,6 @@ const supabase = createClient(supabase_url, supabase_service_role_key, {
     persistSession: false,
   },
 });
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: "maze@standsync.com",
-    pass: process.env.EMAIL_PASSWORD,
-  },
-});
-
-async function send_verification_email(email: string, code: string) {
-  const mail_options = {
-    from: '"StandSync" <hello@standsync.com>',
-    to: email,
-    subject: "Your StandSync Verification Code",
-    text: `Your verification code is: ${code}`,
-    html: `<p>Your verification code is: <strong>${code}</strong></p>`,
-  };
-
-  await transporter.sendMail(mail_options);
-}
 
 export async function initiate_login(
   form_data: FormData
@@ -68,8 +48,14 @@ export async function initiate_login(
       throw user_error;
     }
 
-    if (user.status !== 'invited' && user.status !== 'active') {
-      return { error: "Looks like you haven't been invited yet! But don't worry, we'll let you know when it's your turn." };
+    const typed_user = user as User;
+
+    if (typed_user.status === 'waitlisted') {
+      return { error: "You're on the waitlist. We'll notify you when you're invited." };
+    }
+
+    if (typed_user.status !== 'active' && typed_user.status !== 'invited') {
+      return { error: "Your account is not active. Please contact support." };
     }
 
     const verification_code = randomBytes(3).toString("hex").toUpperCase();
@@ -78,7 +64,7 @@ export async function initiate_login(
     const { error: insert_error } = await supabase
       .from("verification_codes")
       .insert({
-        user_id: user.id,
+        user_id: typed_user.id,
         code: verification_code,
         expires_at: expires_at.toISOString(),
       });
@@ -87,7 +73,12 @@ export async function initiate_login(
       throw insert_error;
     }
 
-    await send_verification_email(email, verification_code);
+    await send_email(
+      email,
+      "Your StandSync Verification Code",
+      `Your verification code is: ${verification_code}`,
+      `<p>Your verification code is: <strong>${verification_code}</strong></p>`
+    );
 
     return { success: "Verification code sent to your email" };
   } catch (error: any) {
@@ -95,27 +86,85 @@ export async function initiate_login(
   }
 }
 
-export async function verify_code(email: string, code: string) {
+export async function verify_magic_link(token: string): Promise<{ error: string } | { success: string, user_id: string, session_token: string }> {
   try {
-    console.log(`Verifying code for email: ${email}`);
 
+    const { data, error } = await supabase
+      .from("magic_links")
+      .select("user_id, expires_at")
+      .eq("token", token)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Check if there's an active session for this token
+        const { data: session_data, error: session_error } = await supabase
+          .from("user_sessions")
+          .select("user_id, token")
+          .eq("token", token)
+          .single();
+
+        if (session_data) {
+          return { success: "Login successful", user_id: session_data.user_id, session_token: session_data.token };
+        }
+      }
+      return { error: "Invalid or expired magic link" };
+    }
+
+    if (!data) {
+      return { error: "Invalid or expired magic link" };
+    }
+
+    if (new Date(data.expires_at) < new Date()) {
+      return { error: "Magic link has expired" };
+    }
+
+    // Generate and store session token
+    const session_token = randomBytes(32).toString("hex");
+    await supabase
+      .from("user_sessions")
+      .insert({ 
+        user_id: data.user_id, 
+        token: session_token,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+      });
+
+    // Update user status to active
+    await supabase
+      .from("users")
+      .update({ status: "active" })
+      .eq("id", data.user_id);
+
+    // Delete the used magic link
+    await supabase
+      .from("magic_links")
+      .delete()
+      .eq("token", token);
+
+    return { success: "Login successful", user_id: data.user_id, session_token };
+  } catch (error: any) {
+    return { error: "Verification failed. Please try again" };
+  }
+}
+
+export async function verify_code(email: string, code: string) {
+  try {;
     const { data: user, error: user_error } = await supabase
       .from("users")
-      .select("id")
+      .select("id, status")
       .eq("email", email)
       .single();
 
     if (user_error) {
-      console.error("Error fetching user:", user_error);
       throw user_error;
     }
 
-    console.log(`User found with id: ${user.id}`);
+    const typed_user = user as User;
 
     const { data: verification, error: verification_error } = await supabase
       .from("verification_codes")
       .select()
-      .eq("user_id", user.id)
+      .eq("user_id", typed_user.id)
       .eq("code", code)
       .gte("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false })
@@ -124,27 +173,23 @@ export async function verify_code(email: string, code: string) {
 
     if (verification_error) {
       if (verification_error.code === "PGRST116") {
-        console.log("Invalid or expired verification code");
         return { error: "Invalid or expired verification code" };
       }
-      console.error("Error verifying code:", verification_error);
       throw verification_error;
     }
 
-    console.log("Verification code is valid");
+    // Update user status to active only if it was 'invited' before
+    if (typed_user.status === 'invited') {
+      const { error: update_error } = await supabase
+        .from("users")
+        .update({ status: "active" })
+        .eq("id", typed_user.id);
 
-    // Code is valid, update user status if needed
-    const { error: update_error } = await supabase
-      .from("users")
-      .update({ status: "active" })
-      .eq("id", user.id);
+      if (update_error) {
+        throw update_error;
+      }
 
-    if (update_error) {
-      console.error("Error updating user status:", update_error);
-      throw update_error;
     }
-
-    console.log("User status updated to active");
 
     // Generate a session token
     const session_token = randomBytes(32).toString("hex");
@@ -153,17 +198,14 @@ export async function verify_code(email: string, code: string) {
     const { error: insert_error } = await supabase
       .from("user_sessions")
       .insert({ 
-        user_id: user.id, 
+        user_id: typed_user.id, 
         token: session_token,
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
       });
 
     if (insert_error) {
-      console.error("Error inserting session token:", insert_error);
       throw insert_error;
     }
-
-    console.log("Session token stored in database");
 
     // Set the session token as a cookie
     cookies().set({
@@ -175,11 +217,9 @@ export async function verify_code(email: string, code: string) {
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
 
-    console.log("Session token set as cookie");
 
     return { success: "Login successful" };
   } catch (error: any) {
-    console.error("Verification failed:", error);
     return { error: "Verification failed. Please try again" };
   }
 }

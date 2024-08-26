@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { invite_user, fetch_users } from "@/actions/admin";
+import { invite_user, fetch_users, delete_user } from "@/actions/admin";
 import {
   Table,
   TableBody,
@@ -24,24 +24,29 @@ export default function AdminPage() {
     content: string;
   } | null>(null);
 
-  const load_users = async (reset = false) => {
+  const load_users = useCallback(async (reset = false) => {
     const new_page = reset ? 1 : page;
     const result = await fetch_users(search_query, new_page);
     if ("error" in result) {
       set_message({ type: "error", content: result.error });
     } else {
-      set_users(reset ? result.users : [...users, ...result.users]);
+      set_users(prev_users => reset ? result.users : [...prev_users, ...result.users]);
       set_has_more(result.has_more);
-      set_page(new_page + 1);
+      set_page(prev_page => reset ? 2 : prev_page + 1);
     }
-  };
+  }, [search_query, page]);
 
   useEffect(() => {
     load_users(true);
   }, [search_query]);
 
-  const handle_invite = async (email: string) => {
-    const result = await invite_user(email);
+  const handle_invite_toggle = async (
+    email: string,
+    current_status: string
+  ) => {
+    const action =
+      current_status === "invited" ? "revoke_invitation" : "invite_user";
+    const result = await invite_user(email, action);
     if ("error" in result) {
       set_message({
         type: "error",
@@ -49,7 +54,22 @@ export default function AdminPage() {
       });
     } else {
       set_message({ type: "success", content: result.success });
-      load_users(true);
+      load_users(true);4
+    }
+  };
+
+  const handle_delete_user = async (email: string) => {
+    if (confirm(`Are you sure you want to delete user ${email}?`)) {
+      const result = await delete_user(email);
+      if ("error" in result) {
+        set_message({
+          type: "error",
+          content: result.error ?? "An error occurred",
+        });
+      } else {
+        set_message({ type: "success", content: result.success });
+        load_users(true);
+      }
     }
   };
 
@@ -81,11 +101,28 @@ export default function AdminPage() {
               <TableCell>{user.email}</TableCell>
               <TableCell>{user.status}</TableCell>
               <TableCell>
-                {user.status !== "invited" && user.status !== "active" && (
-                  <Button onClick={() => handle_invite(user.email)}>
-                    Invite
+                <div className="space-x-2">
+                  {user.status !== "active" && (
+                    <Button
+                      onClick={() =>
+                        handle_invite_toggle(user.email, user.status)
+                      }
+                      variant={
+                        user.status === "invited" ? "destructive" : "default"
+                      }
+                    >
+                      {user.status === "invited"
+                        ? "Revoke Invitation"
+                        : "Invite"}
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => handle_delete_user(user.email)}
+                    variant="destructive"
+                  >
+                    Delete
                   </Button>
-                )}
+                </div>
               </TableCell>
             </TableRow>
           ))}
