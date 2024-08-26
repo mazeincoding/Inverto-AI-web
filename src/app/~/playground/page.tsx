@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CameraOff } from "lucide-react";
 import { WelcomeDialog } from "@/components/welcome-dialog";
 import { Layout } from "@/components/dashboard/layout";
+import { cn } from "@/lib/utils";
 
 const PlaygroundContent: React.FC = () => {
   const [is_session_active, set_is_session_active] = useState(false);
@@ -83,8 +84,12 @@ const PlaygroundContent: React.FC = () => {
             <Button
               onClick={handle_start_stop}
               size="lg"
-              className="mb-4"
-              variant="ghost"
+              className={cn(
+                "mb-4",
+                is_session_active
+                  ? "bg-destructive hover:bg-destructive"
+                  : "bg-primary"
+              )}
             >
               {is_session_active ? "Stop Session" : "Start Session"}
             </Button>
