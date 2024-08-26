@@ -5,7 +5,7 @@ import Webcam from "react-webcam";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CameraOff } from "lucide-react";
+import { AlertCircle, CameraOff, X } from "lucide-react";
 import { WelcomeDialog } from "@/components/welcome-dialog";
 import { Layout } from "@/components/dashboard/layout";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,10 @@ const PlaygroundContent: React.FC = () => {
   const [is_front_camera, set_is_front_camera] = useState(true);
   const [error, set_error] = useState<string | null>(null);
   const [has_camera, set_has_camera] = useState<boolean | null>(null);
-  const [orientation, set_orientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [orientation, set_orientation] = useState<"portrait" | "landscape">(
+    "portrait"
+  );
+  const [is_fullscreen, set_is_fullscreen] = useState(false);
   const webcam_ref = useRef<Webcam>(null);
 
   const format_time = (time: number): string => {
@@ -42,24 +45,31 @@ const PlaygroundContent: React.FC = () => {
 
   const update_orientation = () => {
     if (window.screen.orientation) {
-      set_orientation(window.screen.orientation.type.startsWith('portrait') ? 'portrait' : 'landscape');
+      set_orientation(
+        window.screen.orientation.type.startsWith("portrait")
+          ? "portrait"
+          : "landscape"
+      );
     } else if (window.orientation !== undefined) {
-      set_orientation(Math.abs(window.orientation as number) === 90 ? 'landscape' : 'portrait');
+      set_orientation(
+        Math.abs(window.orientation as number) === 90 ? "landscape" : "portrait"
+      );
     }
   };
 
   useEffect(() => {
     check_camera_availability();
     update_orientation();
-    window.addEventListener('orientationchange', update_orientation);
+    window.addEventListener("orientationchange", update_orientation);
     return () => {
-      window.removeEventListener('orientationchange', update_orientation);
+      window.removeEventListener("orientationchange", update_orientation);
     };
   }, []);
 
   const handle_start_stop = async (): Promise<void> => {
     if (is_session_active) {
       set_is_session_active(false);
+      set_is_fullscreen(false);
       // Here you would typically save the session data
     } else {
       if (!has_camera) {
@@ -68,9 +78,15 @@ const PlaygroundContent: React.FC = () => {
         );
       }
       set_is_session_active(true);
+      set_is_fullscreen(true);
       set_elapsed_time(0);
       set_error(null);
     }
+  };
+
+  const handle_close_session = (): void => {
+    set_is_session_active(false);
+    set_is_fullscreen(false);
   };
 
   const handle_toggle_camera = (): void => {
@@ -108,19 +124,18 @@ const PlaygroundContent: React.FC = () => {
               {is_session_active ? "Stop Session" : "Start Session"}
             </Button>
           </div>
-          {is_session_active && (
-            <div className="space-y-4">
-              {has_camera ? (
-                <div className={cn(
-                  "relative",
-                  orientation === 'portrait' ? "aspect-[9/16]" : "aspect-video"
-                )}>
+          {is_session_active && is_fullscreen && (
+            <div className="fixed inset-0 z-50 bg-background">
+              <div className="relative h-full">
+                {has_camera ? (
                   <Webcam
                     ref={webcam_ref}
                     mirrored={is_front_camera}
                     videoConstraints={{
                       facingMode: is_front_camera ? "user" : "environment",
-                      aspectRatio: orientation === 'portrait' ? 9/16 : 16/9,
+                      aspectRatio: orientation === "portrait" ? 9 / 16 : 16 / 9,
+                      width: { ideal: 1280 },
+                      height: { ideal: 720 },
                     }}
                     onUserMediaError={() =>
                       set_error(
@@ -133,19 +148,32 @@ const PlaygroundContent: React.FC = () => {
                       objectFit: "cover",
                     }}
                   />
-                </div>
-              ) : (
-                <div className="relative aspect-video bg-muted flex items-center justify-center">
-                  <CameraOff className="h-12 w-12 text-muted-foreground" />
-                </div>
-              )}
-              {has_camera && (
-                <div className="flex justify-center">
-                  <Button onClick={handle_toggle_camera} variant="outline">
+                ) : (
+                  <div className="h-full bg-muted flex items-center justify-center">
+                    <CameraOff className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                )}
+                <Button
+                  onClick={handle_close_session}
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-4 right-4 bg-background/50 hover:bg-background/75"
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+                {has_camera && (
+                  <Button
+                    onClick={handle_toggle_camera}
+                    variant="outline"
+                    className="absolute top-4 left-4 bg-background/50 hover:bg-background/75"
+                  >
                     Switch Camera
                   </Button>
+                )}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-white bg-background/50 px-4 py-2 rounded">
+                  {format_time(elapsed_time)}
                 </div>
-              )}
+              </div>
             </div>
           )}
           <p className="text-sm text-muted-foreground text-center">
