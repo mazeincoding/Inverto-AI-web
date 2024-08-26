@@ -2,6 +2,8 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { User } from "@/types/user";
+import { send_invitation_email } from "@/utils/email";
+import { randomBytes } from "crypto";
 
 const supabase_url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabase_service_role_key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -12,11 +14,15 @@ const supabase = createClient(supabase_url, supabase_service_role_key, {
   },
 });
 
-export async function invite_user(email: string): Promise<{ error: string } | { success: string }> {
+export async function invite_user(
+  email: string,
+  action: "invite_user" | "revoke_invitation"
+): Promise<{ error: string } | { success: string }> {
   try {
+    const new_status = action === "invite_user" ? "invited" : "waitlisted";
     const { data, error } = await supabase
       .from("users")
-      .update({ status: "invited" })
+      .update({ status: new_status })
       .eq("email", email)
       .select()
       .single();
@@ -28,14 +34,38 @@ export async function invite_user(email: string): Promise<{ error: string } | { 
       throw error;
     }
 
-    return { success: `User ${email} has been invited` };
+    if (action === "invite_user") {
+      const magic_token = randomBytes(32).toString("hex");
+      const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+
+      const { error: magic_link_error } = await supabase
+        .from("magic_links")
+        .insert({
+          user_id: data.id,
+          token: magic_token,
+          expires_at: expires_at.toISOString(),
+        });
+
+      if (magic_link_error) {
+        throw magic_link_error;
+      }
+
+      const magic_link = `${process.env.NEXT_PUBLIC_APP_URL}/login?token=${magic_token}`;
+      await send_invitation_email(email, magic_link);
+    }
+
+    const action_text =
+      action === "invite_user" ? "invited" : "invitation revoked for";
+    return { success: `User ${email} has been ${action_text}` };
   } catch (error: any) {
-    console.error("Error inviting user:", error);
-    return { error: "Failed to invite user. Please try again." };
+    return { error: "Failed to update user status. Please try again." };
   }
 }
 
-export async function fetch_users(search: string, page: number): Promise<{ error: string } | { users: User[], has_more: boolean }> {
+export async function fetch_users(
+  search: string,
+  page: number
+): Promise<{ error: string } | { users: User[]; has_more: boolean }> {
   const page_size = 50;
   const start = (page - 1) * page_size;
 
@@ -56,10 +86,23 @@ export async function fetch_users(search: string, page: number): Promise<{ error
 
     return {
       users: data as User[],
-      has_more: count ? count > (page * page_size) : false,
+      has_more: count ? count > page * page_size : false,
     };
   } catch (error: any) {
-    console.error("Error fetching users:", error);
     return { error: "Failed to fetch users. Please try again." };
+  }
+}
+
+export async function delete_user(
+  email: string
+): Promise<{ error: string } | { success: string }> {
+  try {
+    const { error } = await supabase.from("users").delete().eq("email", email);
+
+    if (error) throw error;
+
+    return { success: `User ${email} has been deleted` };
+  } catch (error: any) {
+    return { error: "Failed to delete user. Please try again." };
   }
 }
