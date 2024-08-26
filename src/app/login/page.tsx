@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/logo";
@@ -19,33 +19,40 @@ function LoginContent() {
   const search_params = useSearchParams();
   const [is_loading, set_is_loading] = useState(false);
 
+  const handle_magic_link = useCallback(
+    async (token: string) => {
+      set_is_loading(true);
+      const result = await verify_magic_link(token);
+      if ("error" in result) {
+        set_message({ type: "error", content: result.error });
+      } else {
+        document.cookie = `session_token=${
+          result.session_token
+        }; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict; ${
+          process.env.NODE_ENV === "production" ? "Secure" : ""
+        }`;
+        set_message({ type: "success", content: "Login successful" });
+        router.push("/~");
+      }
+      set_is_loading(false);
+    },
+    [router]
+  );
+
   useEffect(() => {
     const token = search_params.get("token");
     if (token) {
       handle_magic_link(token);
     } else {
-      // Check if the user is already logged in
-      const session_token = document.cookie.replace(/(?:(?:^|.*;\s*)session_token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+      const session_token = document.cookie.replace(
+        /(?:(?:^|.*;\s*)session_token\s*\=\s*([^;]*).*$)|^.*$/,
+        "$1"
+      );
       if (session_token) {
         router.push("/~");
       }
     }
-  }, [search_params]);
-
-  const handle_magic_link = async (token: string) => {
-    set_is_loading(true);
-    const result = await verify_magic_link(token);
-    if ("error" in result) {
-      set_message({ type: "error", content: result.error });
-    } else {
-      // Set the session token as a cookie using JavaScript
-      document.cookie = `session_token=${result.session_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict; ${process.env.NODE_ENV === "production" ? "Secure" : ""}`;
-
-      set_message({ type: "success", content: "Login successful" });
-      router.push("/~");
-    }
-    set_is_loading(false);
-  };
+  }, [search_params, handle_magic_link, router]);
 
   const handle_submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
