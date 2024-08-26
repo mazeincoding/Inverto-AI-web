@@ -3,7 +3,7 @@ import { ComingSoonContent } from "@/components/dashboard/coming-soon-content";
 
 export default function History() {
   return (
-    <Layout>
+    <Layout page_title="History">
       <ComingSoonContent
         title="Session History"
         description="We're working hard to bring you a comprehensive session history feature. Stay tuned for updates!"

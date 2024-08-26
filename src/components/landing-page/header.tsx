@@ -4,7 +4,7 @@ import { Logo } from "@/components/logo";
 import { SocialIcons } from "@/components/social-icons";
 import { WaitlistDialog } from "./waitlist-dialog";
 import { Separator } from "@/components/ui/separator";
-import { ThemeToggle } from "./theme-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
 import Link from "next/link";
 
 export function Header() {
