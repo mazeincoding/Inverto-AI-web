@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/logo";
@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { initiate_login, verify_magic_link } from "@/actions/auth";
 import { Loader2 } from "lucide-react";
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, set_email] = useState("");
   const [message, set_message] = useState<{
     type: "success" | "error";
@@ -111,5 +111,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
