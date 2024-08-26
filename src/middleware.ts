@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (
-    request.nextUrl.pathname === "/~" ||
+    request.nextUrl.pathname.startsWith("/~") ||
     request.nextUrl.pathname.startsWith("/admin")
   ) {
     if (!session_token) {
@@ -68,5 +68,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/~", "/admin/:path*"],
+  matcher: ["/", "/~/:path*", "/admin/:path*"],
 };
