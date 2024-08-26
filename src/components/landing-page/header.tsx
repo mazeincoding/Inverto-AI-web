@@ -11,7 +11,7 @@ export function Header() {
   const [dialog_open, set_dialog_open] = useState(false);
 
   return (
-    <header className="flex items-center justify-between py-4 px-6 sticky top-0 backdrop-blur-md z-20 border-b">
+    <header className="flex items-center justify-between py-4 px-6 sticky top-0 backdrop-blur-sm z-20 border-b">
       <Logo is_responsive={true} />
       <div className="flex items-center gap-4">
         <SocialIcons className="hidden sm:block" />
