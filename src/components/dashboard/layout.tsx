@@ -9,7 +9,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({
       <Sidebar className="hidden md:flex w-64 border-r bg-muted/40" />
       <main className="flex-1 overflow-y-auto">
         <Header />
-        <div className="p-6 flex justify-center">{children}</div>
+        <div className="p-6 flex justify-center">
+          <div className="w-full max-w-4xl">{children}</div>
+        </div>
       </main>
     </div>
   );

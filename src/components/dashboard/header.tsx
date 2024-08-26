@@ -3,12 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Settings, LogOut, Menu } from "lucide-react";
+import { SunIcon, MoonIcon, LogOutIcon, MenuIcon } from "lucide-react";
 import { Sidebar } from "./sidebar";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 
 export const Header: React.FC = () => {
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
   const page_title =
     pathname
       .split("/")
@@ -21,7 +23,7 @@ export const Header: React.FC = () => {
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="md:hidden mr-2">
-              <Menu className="h-5 w-5" />
+              <MenuIcon className="h-5 w-5" />
               <span className="sr-only">Toggle sidebar</span>
             </Button>
           </SheetTrigger>
@@ -37,12 +39,20 @@ export const Header: React.FC = () => {
         </h2>
       </div>
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon">
-          <Settings className="h-5 w-5" />
-          <span className="sr-only">Settings</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        >
+          {theme === "dark" ? (
+            <SunIcon className="h-5 w-5" />
+          ) : (
+            <MoonIcon className="h-5 w-5" />
+          )}
+          <span className="sr-only">Toggle theme</span>
         </Button>
         <Button variant="ghost" size="icon">
-          <LogOut className="h-5 w-5" />
+          <LogOutIcon className="h-5 w-5" />
           <span className="sr-only">Log out</span>
         </Button>
       </div>
