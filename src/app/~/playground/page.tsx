@@ -124,64 +124,64 @@ const PlaygroundContent: React.FC = () => {
               {is_session_active ? "Stop Session" : "Start Session"}
             </Button>
           </div>
-          {is_session_active && is_fullscreen && (
-            <div className="fixed inset-0 z-50 bg-background">
-              <div className="relative h-full">
-                {has_camera ? (
-                  <Webcam
-                    ref={webcam_ref}
-                    mirrored={is_front_camera}
-                    videoConstraints={{
-                      facingMode: is_front_camera ? "user" : "environment",
-                      aspectRatio: orientation === "portrait" ? 9 / 16 : 16 / 9,
-                      width: { ideal: 1280 },
-                      height: { ideal: 720 },
-                    }}
-                    onUserMediaError={() =>
-                      set_error(
-                        "Failed to access camera. Please check your permissions and try again."
-                      )
-                    }
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : (
-                  <div className="h-full bg-muted flex items-center justify-center">
-                    <CameraOff className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                )}
-                <Button
-                  onClick={handle_close_session}
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-4 right-4 bg-background/50 hover:bg-background/75"
-                >
-                  <X className="h-6 w-6" />
-                </Button>
-                {has_camera && (
-                  <Button
-                    onClick={handle_toggle_camera}
-                    variant="outline"
-                    className="absolute top-4 left-4 bg-background/50 hover:bg-background/75"
-                  >
-                    Switch Camera
-                  </Button>
-                )}
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-white bg-background/50 px-4 py-2 rounded">
-                  {format_time(elapsed_time)}
-                </div>
-              </div>
-            </div>
-          )}
           <p className="text-sm text-muted-foreground text-center">
             {has_camera
               ? "The timer will automatically start when you enter a handstand and stop when you exit."
               : "It looks like your device doesn't have a camera. You can still use the timer manually."}
           </p>
         </CardContent>
+        {is_session_active && is_fullscreen && (
+          <div className="fixed inset-0 z-50 bg-background">
+            <div className="relative h-full">
+              {has_camera ? (
+                <Webcam
+                  ref={webcam_ref}
+                  mirrored={is_front_camera}
+                  videoConstraints={{
+                    facingMode: is_front_camera ? "user" : "environment",
+                    aspectRatio: orientation === "portrait" ? 9 / 16 : 16 / 9,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                  }}
+                  onUserMediaError={() =>
+                    set_error(
+                      "Failed to access camera. Please check your permissions and try again."
+                    )
+                  }
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <div className="h-full bg-muted flex items-center justify-center">
+                  <CameraOff className="h-12 w-12 text-muted-foreground" />
+                </div>
+              )}
+              <Button
+                onClick={handle_close_session}
+                variant="ghost"
+                size="icon"
+                className="absolute top-4 right-4 bg-background/50 hover:bg-background/75"
+              >
+                <X className="h-6 w-6" />
+              </Button>
+              {has_camera && (
+                <Button
+                  onClick={handle_toggle_camera}
+                  variant="outline"
+                  className="absolute top-4 left-4 bg-background/50 hover:bg-background/75"
+                >
+                  Switch Camera
+                </Button>
+              )}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-white bg-background/50 px-4 py-2 rounded">
+                {format_time(elapsed_time)}
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );
