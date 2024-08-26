@@ -16,6 +16,27 @@ const supabase = createClient(supabase_url, supabase_service_role_key, {
 export async function middleware(request: NextRequest) {
   const session_token = request.cookies.get("session_token")?.value;
 
+  // Redirect /login to /~ if user is authenticated
+  if (request.nextUrl.pathname === "/login") {
+    if (session_token) {
+      const { data, error } = await supabase
+        .from("user_sessions")
+        .select("user_id")
+        .eq("token", session_token)
+        .single();
+
+      if (data && !error) {
+        return NextResponse.redirect(new URL("/~", request.url));
+      }
+    }
+    return NextResponse.next();
+  }
+
+  // Redirect /~ to /~/playground
+  if (request.nextUrl.pathname === "/~") {
+    return NextResponse.redirect(new URL("/~/playground", request.url));
+  }
+
   if (request.nextUrl.pathname === "/") {
     if (session_token) {
       const { data, error } = await supabase
@@ -68,5 +89,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/~/:path*", "/admin/:path*"],
+  matcher: ["/", "/login", "/~", "/~/:path*", "/admin/:path*"],
 };
