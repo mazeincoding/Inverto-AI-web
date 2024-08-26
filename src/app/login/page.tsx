@@ -70,7 +70,7 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background mx-8">
+    <div className="min-h-dvh flex flex-col items-center justify-center bg-background mx-8">
       <div className="w-full max-w-md space-y-4">
         <div className="flex flex-col items-center">
           <Logo is_responsive={false} />

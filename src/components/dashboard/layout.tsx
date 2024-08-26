@@ -6,7 +6,7 @@ export const Layout: React.FC<{
   page_title: string;
 }> = ({ children, page_title }) => {
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-dvh bg-background">
       <Sidebar className="hidden md:flex w-64 border-r bg-muted/40" />
       <main className="flex-1 overflow-y-auto">
         <Header page_title={page_title} />
