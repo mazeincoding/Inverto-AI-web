@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Webcam from "react-webcam";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { AlertCircle, CameraOff, X } from "lucide-react";
 import { WelcomeDialog } from "@/components/welcome-dialog";
 import { Layout } from "@/components/dashboard/layout";
 import { cn } from "@/lib/utils";
+import { CheckCircle, XCircle } from "lucide-react";
 
 const PlaygroundContent: React.FC = () => {
   const [is_session_active, set_is_session_active] = useState(false);
@@ -21,6 +22,15 @@ const PlaygroundContent: React.FC = () => {
   );
   const [is_fullscreen, set_is_fullscreen] = useState(false);
   const webcam_ref = useRef<Webcam>(null);
+  const [is_handstand_detected, set_is_handstand_detected] = useState(false);
+  const detection_interval_ref = useRef<NodeJS.Timeout | null>(null);
+  const [session_start_time, set_session_start_time] = useState<number | null>(
+    null
+  );
+  const [last_handstand_time, set_last_handstand_time] = useState<
+    number | null
+  >(null);
+  const cooldown_period = 3000; // 3 seconds cooldown
 
   const format_time = (time: number): string => {
     const minutes = Math.floor(time / 60);
@@ -70,6 +80,8 @@ const PlaygroundContent: React.FC = () => {
     if (is_session_active) {
       set_is_session_active(false);
       set_is_fullscreen(false);
+      set_session_start_time(null);
+      set_last_handstand_time(null);
       // Here you would typically save the session data
     } else {
       if (!has_camera) {
@@ -81,6 +93,7 @@ const PlaygroundContent: React.FC = () => {
       set_is_fullscreen(true);
       set_elapsed_time(0);
       set_error(null);
+      set_session_start_time(Date.now());
     }
   };
 
@@ -92,6 +105,76 @@ const PlaygroundContent: React.FC = () => {
   const handle_toggle_camera = (): void => {
     set_is_front_camera(!is_front_camera);
   };
+
+  const detect_handstand = useCallback(async () => {
+    if (!webcam_ref.current) return;
+
+    const image_data = webcam_ref.current.getScreenshot();
+    if (!image_data) return;
+
+    try {
+      const response = await fetch("/api/detect-handstand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: image_data }),
+      });
+
+      const result = await response.json();
+      set_is_handstand_detected(result.is_handstand);
+
+      const current_time = Date.now();
+
+      if (result.is_handstand) {
+        set_last_handstand_time(current_time);
+        if (!is_session_active) {
+          set_is_session_active(true);
+          set_session_start_time(current_time);
+        }
+      } else if (is_session_active && last_handstand_time) {
+        const time_since_last_handstand = current_time - last_handstand_time;
+        if (time_since_last_handstand > cooldown_period) {
+          set_is_session_active(false);
+          set_session_start_time(null);
+          set_last_handstand_time(null);
+        }
+      }
+
+      console.log(
+        "Detection result:",
+        result.is_handstand,
+        "Session active:",
+        is_session_active
+      );
+    } catch (error) {
+      console.error("Error detecting handstand:", error);
+    }
+  }, [is_session_active, last_handstand_time]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (is_session_active && session_start_time) {
+      timer = setInterval(() => {
+        set_elapsed_time(Math.floor((Date.now() - session_start_time) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [is_session_active, session_start_time]);
+
+  useEffect(() => {
+    if (is_fullscreen && has_camera) {
+      detection_interval_ref.current = setInterval(detect_handstand, 500);
+    } else {
+      if (detection_interval_ref.current) {
+        clearInterval(detection_interval_ref.current);
+      }
+    }
+
+    return () => {
+      if (detection_interval_ref.current) {
+        clearInterval(detection_interval_ref.current);
+      }
+    };
+  }, [is_fullscreen, has_camera, detect_handstand]);
 
   return (
     <div className="space-y-4">
@@ -176,8 +259,27 @@ const PlaygroundContent: React.FC = () => {
                   Switch Camera
                 </Button>
               )}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-white bg-background/50 px-4 py-2 rounded">
-                {format_time(elapsed_time)}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-col items-center space-y-2">
+                <div className="text-4xl font-bold text-white bg-background/50 px-4 py-2 rounded">
+                  {format_time(elapsed_time)}
+                </div>
+                <div className="flex items-center space-x-2 bg-background/50 px-4 py-2 rounded">
+                  {is_handstand_detected ? (
+                    <>
+                      <CheckCircle className="h-6 w-6 text-green-500" />
+                      <span className="text-white font-semibold">
+                        Handstand Detected
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-6 w-6 text-red-500" />
+                      <span className="text-white font-semibold">
+                        No Handstand Detected
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -40,3 +40,10 @@ next-env.d.ts
 
 # Ignore waitlist data
 data/waitlist.json
+
+# Ignore SSL certificate files
+*.key
+*.crt
+
+# Ignore development server file
+server.js
