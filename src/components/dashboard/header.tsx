@@ -5,6 +5,7 @@ import { Sidebar } from "./sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { LogOutIcon } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 export const Header = ({ page_title }: { page_title: string }) => {
   return (
@@ -30,10 +31,15 @@ export const Header = ({ page_title }: { page_title: string }) => {
       </div>
       <div className="flex items-center gap-4">
         <ThemeToggle />
-        <Button variant="ghost" size="icon">
-          <LogOutIcon className="h-5 w-5" />
-          <span className="sr-only">Log out</span>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <LogOutIcon className="h-5 w-5" />
+              <span className="sr-only">Log out</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Logout</TooltipContent>
+        </Tooltip>
       </div>
     </header>
   );
