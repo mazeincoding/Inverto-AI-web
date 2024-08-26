@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/logo";
@@ -8,7 +8,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { verify_code } from "@/actions/auth";
 import { Loader2 } from "lucide-react";
 
-export default function VerifyPage() {
+function VerifyPageContent() {
   const [code, set_code] = useState("");
   const [message, set_message] = useState<{
     type: "success" | "error";
@@ -90,5 +90,13 @@ export default function VerifyPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VerifyPageContent />
+    </Suspense>
   );
 }
