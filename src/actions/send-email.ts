@@ -18,6 +18,20 @@ if (!supabase_url || !supabase_anon_key) {
 const supabase = createClient(supabase_url, supabase_anon_key)
 
 export async function subscribe_to_waitlist(form_data: FormData) {
+  // Bot detection checks
+  const honeypot = form_data.get('name');
+  const token = form_data.get('token');
+
+  if (honeypot) {
+    console.log("Bot detected: honeypot filled");
+    return { error: "Invalid submission" };
+  }
+
+  if (!token) {
+    console.log("Bot detected: missing token");
+    return { error: "Invalid submission" };
+  }
+
   const validated_fields = email_schema.safeParse({
     email: form_data.get("email"),
   });

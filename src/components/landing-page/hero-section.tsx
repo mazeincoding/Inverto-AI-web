@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { subscribe_to_waitlist } from "@/actions/send-email";
@@ -7,14 +7,36 @@ import Link from "next/link";
 
 export function HeroSection() {
   const [email, set_email] = useState("");
+  const [honeypot, set_honeypot] = useState("");
+  const [submit_time, set_submit_time] = useState(0);
+  const [token, set_token] = useState("");
   const [message, set_message] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
 
+  useEffect(() => {
+    set_submit_time(Date.now());
+    set_token(Math.random().toString(36).substring(2, 15));
+  }, []);
+
   const handle_submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    // Bot checks
+    if (honeypot) {
+      console.log("Bot detected: honeypot filled");
+      return;
+    }
+
+    if (Date.now() - submit_time < 3000) {
+      console.log("Bot detected: form submitted too quickly");
+      return;
+    }
+
     const form_data = new FormData(event.currentTarget);
+    form_data.append("token", token);
+
     const result = await subscribe_to_waitlist(form_data);
 
     if ("error" in result) {
@@ -42,6 +64,9 @@ export function HeroSection() {
           handle_submit={handle_submit}
           message={message}
           clear_message={clear_message}
+          honeypot={honeypot}
+          set_honeypot={set_honeypot}
+          token={token}
         />
       </div>
     </div>
@@ -69,6 +94,9 @@ interface EmailFormProps {
   handle_submit: (event: React.FormEvent<HTMLFormElement>) => void;
   message: { type: "success" | "error"; text: string } | null;
   clear_message: () => void;
+  honeypot: string;
+  set_honeypot: (value: string) => void;
+  token: string;
 }
 
 function EmailForm({
@@ -77,6 +105,9 @@ function EmailForm({
   handle_submit,
   message,
   clear_message,
+  honeypot,
+  set_honeypot,
+  token,
 }: EmailFormProps) {
   return (
     <div className="w-full max-w-xl space-y-6">
@@ -96,6 +127,16 @@ function EmailForm({
             className="h-[50px] w-full rounded-2xl pl-11 pr-32"
             required
           />
+          <input
+            type="text"
+            name="name"
+            value={honeypot}
+            onChange={(e) => set_honeypot(e.target.value)}
+            style={{ display: "none" }}
+            tabIndex={-1}
+            autoComplete="off"
+          />
+          <input type="hidden" name="token" value={token} />
           <Button
             type="submit"
             variant="default"
