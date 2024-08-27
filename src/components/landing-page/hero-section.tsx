@@ -8,25 +8,20 @@ import Link from "next/link";
 export function HeroSection() {
   const [email, set_email] = useState("");
   const [honeypot, set_honeypot] = useState("");
+  const [submit_time, set_submit_time] = useState(0);
   const [token, set_token] = useState("");
   const [message, set_message] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
-  const [submit_time, set_submit_time] = useState(0);
 
   useEffect(() => {
-    async function fetch_token() {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/generate-token`);
-      const data = await response.json();
-      set_token(data.token);
-    }
-    fetch_token();
+    set_submit_time(Date.now());
+    set_token(Math.random().toString(36).substring(2, 15));
   }, []);
 
   const handle_submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const current_time = Date.now();
 
     // Bot checks
     if (honeypot) {
@@ -34,12 +29,10 @@ export function HeroSection() {
       return;
     }
 
-    if (current_time - submit_time < 3000) {
+    if (Date.now() - submit_time < 3000) {
       console.log("Bot detected: form submitted too quickly");
       return;
     }
-
-    set_submit_time(current_time);
 
     const form_data = new FormData(event.currentTarget);
     form_data.append("token", token);
@@ -52,7 +45,7 @@ export function HeroSection() {
       set_email("");
       set_message({
         type: "success",
-        text: result.success ?? "Please check your email to confirm your subscription.",
+        text: result.success ?? "Subscription successful",
       });
     }
   };
@@ -62,7 +55,7 @@ export function HeroSection() {
   };
 
   return (
-    <section className="w-full">
+    <div className="w-full flex flex-col">
       <div className="space-y-6 flex flex-col items-center">
         <MainContent />
         <EmailForm
@@ -76,7 +69,7 @@ export function HeroSection() {
           token={token}
         />
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -154,11 +147,11 @@ function EmailForm({
           </Button>
         </div>
       </form>
-      <div className="text-center">
+      <p className="text-center">
         Already invited? <Link href="/login">Login</Link>
-      </div>
+      </p>
       {message && (
-        <div
+        <p
           className={`text-center flex items-center gap-2 justify-center ${
             message.type === "success" ? "text-green-500" : "text-red-500"
           }`}
@@ -176,7 +169,7 @@ function EmailForm({
           >
             <X className="w-4 h-4" />
           </Button>
-        </div>
+        </p>
       )}
     </div>
   );
