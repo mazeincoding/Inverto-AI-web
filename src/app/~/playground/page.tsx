@@ -10,6 +10,9 @@ import { WelcomeDialog } from "@/components/welcome-dialog";
 import { Layout } from "@/components/dashboard/layout";
 import { cn } from "@/lib/utils";
 import { CheckCircle, XCircle } from "lucide-react";
+import { load_onnx_model, process_image } from "@/utils/handstand-detection";
+import { Loader2 } from "lucide-react";
+import * as ort from "onnxruntime-web";
 
 const PlaygroundContent: React.FC = () => {
   const [is_session_active, set_is_session_active] = useState(false);
@@ -31,6 +34,11 @@ const PlaygroundContent: React.FC = () => {
     number | null
   >(null);
   const cooldown_period = 3000; // 3 seconds cooldown
+  const [is_model_loaded, set_is_model_loaded] = useState(false);
+  const [is_model_loading, set_is_model_loading] = useState(false);
+  const [show_camera, set_show_camera] = useState(false);
+  const [camera_error, set_camera_error] = useState<string | null>(null);
+  const [model, set_model] = useState<ort.InferenceSession | null>(null);
 
   const format_time = (time: number): string => {
     const minutes = Math.floor(time / 60);
@@ -71,6 +79,7 @@ const PlaygroundContent: React.FC = () => {
     check_camera_availability();
     update_orientation();
     window.addEventListener("orientationchange", update_orientation);
+
     return () => {
       window.removeEventListener("orientationchange", update_orientation);
     };
@@ -82,24 +91,38 @@ const PlaygroundContent: React.FC = () => {
       set_is_fullscreen(false);
       set_session_start_time(null);
       set_last_handstand_time(null);
+      set_show_camera(false);
       // Here you would typically save the session data
     } else {
-      if (!has_camera) {
-        set_error(
-          "No camera detected. You can still use the timer without video."
-        );
-      }
-      set_is_session_active(true);
+      set_is_model_loading(true);
       set_is_fullscreen(true);
-      set_elapsed_time(0);
-      set_error(null);
-      set_session_start_time(Date.now());
+      try {
+        const loaded_model = await load_onnx_model();
+        set_model(loaded_model);
+        set_is_model_loaded(true);
+        set_is_session_active(true);
+        set_elapsed_time(0);
+        set_error(null);
+        set_session_start_time(Date.now());
+        set_show_camera(true);
+      } catch (error) {
+        console.error("Error loading ONNX model:", error);
+        set_error(
+          `Failed to load handstand detection model: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }. Please try again.`
+        );
+        set_is_fullscreen(false);
+      } finally {
+        set_is_model_loading(false);
+      }
     }
   };
 
   const handle_close_session = (): void => {
     set_is_session_active(false);
     set_is_fullscreen(false);
+    set_show_camera(false);
   };
 
   const handle_toggle_camera = (): void => {
@@ -107,24 +130,19 @@ const PlaygroundContent: React.FC = () => {
   };
 
   const detect_handstand = useCallback(async () => {
-    if (!webcam_ref.current) return;
+    if (!webcam_ref.current || !is_model_loaded || !model) return;
 
-    const image_data = webcam_ref.current.getScreenshot();
-    if (!image_data) return;
+    const image_src = webcam_ref.current.getScreenshot();
+    if (!image_src) return;
 
     try {
-      const response = await fetch("/api/detect-handstand", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: image_data }),
-      });
-
-      const result = await response.json();
-      set_is_handstand_detected(result.is_handstand);
+      const probability = await process_image(image_src, model);
+      const is_handstand = probability >= 0.5;
+      set_is_handstand_detected(is_handstand);
 
       const current_time = Date.now();
 
-      if (result.is_handstand) {
+      if (is_handstand) {
         set_last_handstand_time(current_time);
         if (!is_session_active) {
           set_is_session_active(true);
@@ -141,14 +159,16 @@ const PlaygroundContent: React.FC = () => {
 
       console.log(
         "Detection result:",
-        result.is_handstand,
+        is_handstand,
+        "Probability:",
+        probability,
         "Session active:",
         is_session_active
       );
     } catch (error) {
       console.error("Error detecting handstand:", error);
     }
-  }, [is_session_active, last_handstand_time]);
+  }, [is_session_active, last_handstand_time, is_model_loaded, model]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -161,7 +181,7 @@ const PlaygroundContent: React.FC = () => {
   }, [is_session_active, session_start_time]);
 
   useEffect(() => {
-    if (is_fullscreen && has_camera) {
+    if (is_fullscreen && has_camera && show_camera) {
       detection_interval_ref.current = setInterval(detect_handstand, 500);
     } else {
       if (detection_interval_ref.current) {
@@ -174,7 +194,18 @@ const PlaygroundContent: React.FC = () => {
         clearInterval(detection_interval_ref.current);
       }
     };
-  }, [is_fullscreen, has_camera, detect_handstand]);
+  }, [is_fullscreen, has_camera, show_camera, detect_handstand]);
+
+  const handle_camera_error = useCallback((error: string) => {
+    console.error("Camera error:", error);
+    set_camera_error(error);
+    set_has_camera(false);
+  }, []);
+
+  const handle_camera_start = useCallback(() => {
+    console.log("Camera started successfully");
+    set_camera_error(null);
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -203,40 +234,83 @@ const PlaygroundContent: React.FC = () => {
                   ? "bg-destructive hover:bg-destructive"
                   : "bg-primary"
               )}
+              disabled={is_model_loading}
             >
-              {is_session_active ? "Stop Session" : "Start Session"}
+              {is_model_loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Preparing Camera...
+                </>
+              ) : is_session_active ? (
+                "Stop Session"
+              ) : (
+                "Start Session"
+              )}
             </Button>
           </div>
           <p className="text-sm text-muted-foreground text-center">
-            {has_camera
-              ? "The timer will automatically start when you enter a handstand and stop when you exit."
+            {has_camera === null || has_camera
+              ? "Click 'Start Session' to begin."
               : "It looks like your device doesn't have a camera. You can still use the timer manually."}
           </p>
         </CardContent>
-        {is_session_active && is_fullscreen && (
+        {is_fullscreen && (
           <div className="fixed inset-0 z-50 bg-background">
             <div className="relative h-full">
-              {has_camera ? (
-                <Webcam
-                  ref={webcam_ref}
-                  mirrored={is_front_camera}
-                  videoConstraints={{
-                    facingMode: is_front_camera ? "user" : "environment",
-                    aspectRatio: orientation === "portrait" ? 9 / 16 : 16 / 9,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                  }}
-                  onUserMediaError={() =>
-                    set_error(
-                      "Failed to access camera. Please check your permissions and try again."
-                    )
-                  }
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
+              {is_model_loading ? (
+                <div className="h-full flex items-center justify-center flex-col">
+                  <Loader2 className="h-12 w-12 animate-spin mb-4" />
+                  <p className="text-lg font-semibold">
+                    Getting ready to spot your handstands...
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Just a moment while we warm up!
+                  </p>
+                </div>
+              ) : show_camera && has_camera ? (
+                <>
+                  <Webcam
+                    ref={webcam_ref}
+                    mirrored={true}
+                    videoConstraints={{
+                      facingMode: is_front_camera ? "user" : "environment",
+                      aspectRatio: orientation === "portrait" ? 9 / 16 : 16 / 9,
+                      width: { ideal: 1280 },
+                      height: { ideal: 720 },
+                    }}
+                    onUserMediaError={(error) =>
+                      handle_camera_error(
+                        typeof error === "string" ? error : error.message
+                      )
+                    }
+                    onUserMedia={handle_camera_start}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      transform: "scaleX(-1)",
+                    }}
+                  />
+                  {camera_error && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                      <div className="text-center p-4 bg-background rounded-lg shadow-lg">
+                        <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">
+                          Camera Error
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {camera_error}
+                        </p>
+                        <Button
+                          onClick={() => window.location.reload()}
+                          className="mt-4"
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="h-full bg-muted flex items-center justify-center">
                   <CameraOff className="h-12 w-12 text-muted-foreground" />
@@ -250,11 +324,12 @@ const PlaygroundContent: React.FC = () => {
               >
                 <X className="h-6 w-6" />
               </Button>
-              {has_camera && (
+              {has_camera && show_camera && (
                 <Button
                   onClick={handle_toggle_camera}
                   variant="outline"
                   className="absolute top-4 left-4 bg-background/50 hover:bg-background/75"
+                  disabled={is_model_loading}
                 >
                   Switch Camera
                 </Button>
@@ -263,23 +338,25 @@ const PlaygroundContent: React.FC = () => {
                 <div className="text-4xl font-bold text-white bg-background/50 px-4 py-2 rounded">
                   {format_time(elapsed_time)}
                 </div>
-                <div className="flex items-center space-x-2 bg-background/50 px-4 py-2 rounded">
-                  {is_handstand_detected ? (
-                    <>
-                      <CheckCircle className="h-6 w-6 text-green-500" />
-                      <span className="text-white font-semibold">
-                        Handstand Detected
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-6 w-6 text-red-500" />
-                      <span className="text-white font-semibold">
-                        No Handstand Detected
-                      </span>
-                    </>
-                  )}
-                </div>
+                {show_camera && (
+                  <div className="flex items-center space-x-2 bg-background/50 px-4 py-2 rounded">
+                    {is_handstand_detected ? (
+                      <>
+                        <CheckCircle className="h-6 w-6 text-green-500" />
+                        <span className="text-white font-semibold">
+                          Handstand Detected
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-6 w-6 text-red-500" />
+                        <span className="text-white font-semibold">
+                          No Handstand Detected
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

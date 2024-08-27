@@ -1,131 +1,107 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Upload, CheckCircle, XCircle } from "lucide-react";
-import { WelcomeDialog } from "@/components/welcome-dialog";
-import { Layout } from "@/components/dashboard/layout";
+import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import { load_onnx_model, process_image } from "@/utils/handstand-detection";
+import * as ort from "onnxruntime-web";
 
-const PlaygroundImageContent: React.FC = () => {
+export default function HandstandDetectionPage() {
   const [selected_image, set_selected_image] = useState<string | null>(null);
+  const [prediction, set_prediction] = useState<string | null>(null);
+  const [probability, set_probability] = useState<number | null>(null);
+  const [model, set_model] = useState<ort.InferenceSession | null>(null);
+  const [is_loading_model, set_is_loading_model] = useState(true);
   const [is_processing, set_is_processing] = useState(false);
-  const [error, set_error] = useState<string | null>(null);
-  const [is_handstand_detected, set_is_handstand_detected] = useState<
-    boolean | null
-  >(null);
-  const file_input_ref = useRef<HTMLInputElement>(null);
 
   const handle_image_upload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => set_selected_image(e.target?.result as string);
-      reader.readAsDataURL(file);
+      const image_url = URL.createObjectURL(file);
+      set_selected_image(image_url);
+      set_prediction(null);
+      set_probability(null);
     }
   };
 
-  const handle_process_image = async () => {
-    if (!selected_image) return;
+  const detect_handstand = useCallback(async () => {
+    if (!selected_image || !model) return;
 
     set_is_processing(true);
-    set_error(null);
-
     try {
-      const response = await fetch("/api/detect-handstand", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: selected_image }),
-      });
-
-      const result = await response.json();
-      set_is_handstand_detected(result.is_handstand);
+      const prob = await process_image(selected_image, model);
+      const is_handstand = prob >= 0.5;
+      set_prediction(is_handstand ? "Handstand" : "Not Handstand");
+      set_probability(prob);
     } catch (error) {
-      console.error("Error processing image:", error);
-      set_error("Failed to process image. Please try again.");
+      console.error("Error during inference:", error);
+      set_prediction("Error occurred");
+      set_probability(null);
     } finally {
       set_is_processing(false);
     }
-  };
+  }, [selected_image, model]);
+
+  useEffect(() => {
+    load_onnx_model()
+      .then((loaded_model) => {
+        set_model(loaded_model);
+        set_is_loading_model(false);
+      })
+      .catch((error) => {
+        console.error("Error loading model:", error);
+        set_is_loading_model(false);
+      });
+  }, []);
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Handstand Image Detector</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+    <div className="container mx-auto p-4 max-w-2xl">
+      <h1 className="text-2xl font-bold mb-4">Handstand Detection</h1>
+
+      <div className="mb-4">
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={handle_image_upload}
+          className="mb-2"
+        />
+      </div>
+
+      {selected_image && (
+        <div className="mb-4">
+          <Image
+            src={selected_image}
+            alt="Uploaded image"
+            width={400}
+            height={400}
+            className="w-full h-auto object-contain"
+          />
+        </div>
+      )}
+
+      <Button
+        onClick={detect_handstand}
+        disabled={
+          !selected_image || !model || is_loading_model || is_processing
+        }
+        className="w-full mb-4"
+      >
+        {is_loading_model
+          ? "Loading Model..."
+          : is_processing
+          ? "Processing..."
+          : "Detect Handstand"}
+      </Button>
+
+      {prediction && (
+        <div className="text-center">
+          <p className="text-xl font-bold">{prediction}</p>
+          {probability !== null && (
+            <p>Probability: {(probability * 100).toFixed(2)}%</p>
           )}
-          <div className="flex flex-col items-center space-y-4">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handle_image_upload}
-              className="hidden"
-              ref={file_input_ref}
-            />
-            <Button
-              onClick={() => file_input_ref.current?.click()}
-              size="lg"
-              className="w-full max-w-xs"
-            >
-              <Upload className="mr-2 h-4 w-4" /> Upload Image
-            </Button>
-            {selected_image && (
-              <div className="relative w-full max-w-xs aspect-square">
-                <Image
-                  src={selected_image}
-                  alt="Uploaded image"
-                  layout="fill"
-                  objectFit="contain"
-                />
-              </div>
-            )}
-            <Button
-              onClick={handle_process_image}
-              size="lg"
-              className="w-full max-w-xs"
-              disabled={!selected_image || is_processing}
-            >
-              {is_processing ? "Processing..." : "Detect Handstand"}
-            </Button>
-            {is_handstand_detected !== null && (
-              <div className="flex items-center space-x-2 bg-background/50 px-4 py-2 rounded">
-                {is_handstand_detected ? (
-                  <>
-                    <CheckCircle className="h-6 w-6 text-green-500" />
-                    <span className="font-semibold">Handstand Detected</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-6 w-6 text-red-500" />
-                    <span className="font-semibold">No Handstand Detected</span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
-  );
-};
-
-export default function PlaygroundImage() {
-  return (
-    <>
-      <WelcomeDialog />
-      <Layout page_title="Playground Image">
-        <PlaygroundImageContent />
-      </Layout>
-    </>
   );
 }
