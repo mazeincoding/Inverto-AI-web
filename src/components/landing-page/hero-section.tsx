@@ -16,8 +16,13 @@ export function HeroSection() {
   } | null>(null);
 
   useEffect(() => {
-    set_submit_time(Date.now());
-    set_token(Math.random().toString(36).substring(2, 15));
+    const generate_token = async () => {
+      const response = await fetch("/api/generate-token");
+      const data = await response.json();
+      set_token(data.token);
+      set_submit_time(data.submit_time);
+    };
+    generate_token();
   }, []);
 
   const handle_submit = async (event: React.FormEvent<HTMLFormElement>) => {
