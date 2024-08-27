@@ -1,12 +1,29 @@
 import { Storage } from "@google-cloud/storage";
 import { NextResponse } from "next/server";
 
-const storage = new Storage({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS || "{}"),
-});
+let storage: Storage;
+
+try {
+  const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS
+    ? JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+    : undefined;
+
+  storage = new Storage({
+    projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+    credentials,
+  });
+} catch (error) {
+  console.error("Error initializing Google Cloud Storage:", error);
+}
 
 export async function GET() {
+  if (!storage) {
+    return NextResponse.json(
+      { error: "Google Cloud Storage not properly initialized" },
+      { status: 500 }
+    );
+  }
+
   const bucketName = process.env.GOOGLE_CLOUD_BUCKET_NAME;
   if (!bucketName) {
     throw new Error("GOOGLE_CLOUD_BUCKET_NAME is not defined");
