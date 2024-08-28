@@ -89,10 +89,15 @@ const run_inference = async (
   return probability;
 };
 
+export interface DetectionResult {
+  is_handstand: boolean;
+  probability: number;
+}
+
 export const process_image = async (
   image_url: string,
   model: ort.InferenceSession
-): Promise<number> => {
+): Promise<DetectionResult> => {
   const img = new window.Image();
   img.src = image_url;
   await img.decode();
@@ -127,5 +132,8 @@ export const process_image = async (
     preprocessed_data,
     [1, 3, 224, 224]
   );
-  return run_inference(model, input_tensor);
+  const probability = await run_inference(model, input_tensor);
+  const is_handstand = probability >= 0.5;
+
+  return { is_handstand, probability };
 };

@@ -10,7 +10,11 @@ import { WelcomeDialog } from "@/components/welcome-dialog";
 import { Layout } from "@/components/dashboard/layout";
 import { cn } from "@/lib/utils";
 import { CheckCircle, XCircle } from "lucide-react";
-import { load_onnx_model, process_image } from "@/utils/handstand-detection";
+import {
+  load_onnx_model,
+  process_image,
+  DetectionResult,
+} from "@/utils/handstand-detection";
 import { Loader2 } from "lucide-react";
 import * as ort from "onnxruntime-web";
 
@@ -33,12 +37,13 @@ const PlaygroundContent: React.FC = () => {
   const [last_handstand_time, set_last_handstand_time] = useState<
     number | null
   >(null);
-  const cooldown_period = 3000; // 3 seconds cooldown
   const [is_model_loaded, set_is_model_loaded] = useState(false);
   const [is_model_loading, set_is_model_loading] = useState(false);
   const [show_camera, set_show_camera] = useState(false);
   const [camera_error, set_camera_error] = useState<string | null>(null);
   const [model, set_model] = useState<ort.InferenceSession | null>(null);
+  const [timer_running, set_timer_running] = useState(false);
+  const timer_ref = useRef<NodeJS.Timeout | null>(null);
 
   const format_time = (time: number): string => {
     const minutes = Math.floor(time / 60);
@@ -92,6 +97,8 @@ const PlaygroundContent: React.FC = () => {
       set_session_start_time(null);
       set_last_handstand_time(null);
       set_show_camera(false);
+      reset_timer();
+      set_elapsed_time(0);
       // Here you would typically save the session data
     } else {
       set_is_model_loading(true);
@@ -129,6 +136,15 @@ const PlaygroundContent: React.FC = () => {
     set_is_front_camera(!is_front_camera);
   };
 
+  const reset_timer = useCallback(() => {
+    set_elapsed_time(0);
+    set_timer_running(false);
+    if (timer_ref.current) {
+      clearInterval(timer_ref.current);
+      timer_ref.current = null;
+    }
+  }, []);
+
   const detect_handstand = useCallback(async () => {
     if (!webcam_ref.current || !is_model_loaded || !model) return;
 
@@ -136,49 +152,50 @@ const PlaygroundContent: React.FC = () => {
     if (!image_src) return;
 
     try {
-      const probability = await process_image(image_src, model);
-      const is_handstand = probability >= 0.5;
-      set_is_handstand_detected(is_handstand);
+      const result: DetectionResult = await process_image(image_src, model);
+      set_is_handstand_detected(result.is_handstand);
 
-      const current_time = Date.now();
-
-      if (is_handstand) {
-        set_last_handstand_time(current_time);
-        if (!is_session_active) {
-          set_is_session_active(true);
-          set_session_start_time(current_time);
+      if (result.is_handstand) {
+        if (!timer_running) {
+          // Start the timer if it's not already running
+          set_timer_running(true);
+          set_session_start_time(Date.now());
         }
-      } else if (is_session_active && last_handstand_time) {
-        const time_since_last_handstand = current_time - last_handstand_time;
-        if (time_since_last_handstand > cooldown_period) {
-          set_is_session_active(false);
-          set_session_start_time(null);
-          set_last_handstand_time(null);
-        }
+        set_last_handstand_time(Date.now());
+      } else {
+        // Reset the timer immediately when handstand is no longer detected
+        reset_timer();
       }
 
       console.log(
         "Detection result:",
-        is_handstand,
+        result.is_handstand,
         "Probability:",
-        probability,
-        "Session active:",
-        is_session_active
+        result.probability,
+        "Timer running:",
+        timer_running
       );
     } catch (error) {
       console.error("Error detecting handstand:", error);
     }
-  }, [is_session_active, last_handstand_time, is_model_loaded, model]);
+  }, [is_model_loaded, model, timer_running, reset_timer]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (is_session_active && session_start_time) {
-      timer = setInterval(() => {
-        set_elapsed_time(Math.floor((Date.now() - session_start_time) / 1000));
+    if (timer_running) {
+      timer_ref.current = setInterval(() => {
+        set_elapsed_time((prev) => prev + 1);
       }, 1000);
+    } else if (timer_ref.current) {
+      clearInterval(timer_ref.current);
+      timer_ref.current = null;
     }
-    return () => clearInterval(timer);
-  }, [is_session_active, session_start_time]);
+
+    return () => {
+      if (timer_ref.current) {
+        clearInterval(timer_ref.current);
+      }
+    };
+  }, [timer_running]);
 
   useEffect(() => {
     if (is_fullscreen && has_camera && show_camera) {
