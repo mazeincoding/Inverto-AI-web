@@ -74,7 +74,7 @@ const faqs = [
 
 export function FAQSection() {
   return (
-    <div className="w-full max-w-3xl mx-auto py-16">
+    <div className="w-full max-w-3xl mx-auto">
       <h2 className="text-3xl font-bold text-center mb-8">
         Frequently Asked Questions
       </h2>
