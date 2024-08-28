@@ -30,10 +30,9 @@ export default function HandstandDetectionPage() {
 
     set_is_processing(true);
     try {
-      const prob = await process_image(selected_image, model);
-      const is_handstand = prob >= 0.5;
-      set_prediction(is_handstand ? "Handstand" : "Not Handstand");
-      set_probability(prob);
+      const result = await process_image(selected_image, model);
+      set_prediction(result.is_handstand ? "Handstand" : "Not Handstand");
+      set_probability(result.probability);
     } catch (error) {
       console.error("Error during inference:", error);
       set_prediction("Error occurred");
