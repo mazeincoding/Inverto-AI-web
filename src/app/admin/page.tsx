@@ -24,21 +24,26 @@ export default function AdminPage() {
     content: string;
   } | null>(null);
 
-  const load_users = useCallback(async (reset = false) => {
-    const new_page = reset ? 1 : page;
-    const result = await fetch_users(search_query, new_page);
-    if ("error" in result) {
-      set_message({ type: "error", content: result.error });
-    } else {
-      set_users(prev_users => reset ? result.users : [...prev_users, ...result.users]);
-      set_has_more(result.has_more);
-      set_page(prev_page => reset ? 2 : prev_page + 1);
-    }
-  }, [search_query, page]);
+  const load_users = useCallback(
+    async (reset = false) => {
+      const new_page = reset ? 1 : page;
+      const result = await fetch_users(search_query, new_page);
+      if ("error" in result) {
+        set_message({ type: "error", content: result.error });
+      } else {
+        set_users((prev_users) =>
+          reset ? result.users : [...prev_users, ...result.users]
+        );
+        set_has_more(result.has_more);
+        set_page((prev_page) => (reset ? 2 : prev_page + 1));
+      }
+    },
+    [search_query, page]
+  );
 
   useEffect(() => {
     load_users(true);
-  }, [search_query]);
+  }, [load_users]);
 
   const handle_invite_toggle = async (
     email: string,
@@ -54,7 +59,8 @@ export default function AdminPage() {
       });
     } else {
       set_message({ type: "success", content: result.success });
-      load_users(true);4
+      load_users(true);
+      4;
     }
   };
 
