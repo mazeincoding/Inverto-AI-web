@@ -1,15 +1,43 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Smartphone, Camera, Play, Timer, BarChart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { WaitlistDialog } from "./waitlist-dialog";
 
 export function HowItWorks() {
+  const [dialog_open, set_dialog_open] = useState(false);
+
   const steps = [
-    { number: 1, title: "Set up your device", description: "Position your device's camera to capture your full body during handstands.", icon: Camera },
-    { number: 2, title: "Start a session", description: "Open StandSync and initiate a new handstand practice session.", icon: Smartphone },
-    { number: 3, title: "Perform handstands", description: "Execute your handstands. The app automatically detects and times each hold.", icon: Timer },
-    { number: 4, title: "Review your progress", description: "After your session, check your results and track your improvement over time.", icon: BarChart },
+    {
+      number: 1,
+      title: "Set up your device",
+      description:
+        "Position your device's camera to capture your full body during handstands.",
+      icon: Camera,
+    },
+    {
+      number: 2,
+      title: "Start a session",
+      description:
+        "Open StandSync and initiate a new handstand practice session.",
+      icon: Smartphone,
+    },
+    {
+      number: 3,
+      title: "Perform handstands",
+      description:
+        "Execute your handstands. The app automatically detects and times each hold.",
+      icon: Timer,
+    },
+    {
+      number: 4,
+      title: "Review your progress",
+      description:
+        "After your session, check your results and track your improvement over time.",
+      icon: BarChart,
+    },
   ];
 
   return (
@@ -34,12 +62,26 @@ export function HowItWorks() {
               </div>
               <div className="mt-6 flex flex-col items-center">
                 <step.icon className="w-12 h-12 text-primary mb-4" />
-                <h3 className="text-xl font-semibold text-center mb-3">{step.title}</h3>
-                <p className="text-muted-foreground text-center">{step.description}</p>
+                <h3 className="text-xl font-semibold text-center mb-3">
+                  {step.title}
+                </h3>
+                <p className="text-muted-foreground text-center">
+                  {step.description}
+                </p>
               </div>
             </div>
           </motion.div>
         ))}
+      </div>
+      <div className="flex items-center justify-center mt-20">
+        <Button
+          size="lg"
+          className="rounded-2xl"
+          onClick={() => set_dialog_open(true)}
+        >
+          Get access
+        </Button>
+        <WaitlistDialog open={dialog_open} onOpenChange={set_dialog_open} />
       </div>
     </div>
   );
