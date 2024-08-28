@@ -9,21 +9,25 @@ import { Button } from "@/components/ui/button";
 
 export default function AnnouncementsPage() {
   const [title, set_title] = useState("");
+  const [summary, set_summary] = useState("");
   const [content, set_content] = useState("");
   const [is_loading, set_is_loading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     const saved_title = localStorage.getItem("announcement_title");
+    const saved_summary = localStorage.getItem("announcement_summary");
     const saved_content = localStorage.getItem("announcement_content");
     if (saved_title) set_title(saved_title);
+    if (saved_summary) set_summary(saved_summary);
     if (saved_content) set_content(saved_content);
   }, []);
 
   useEffect(() => {
     localStorage.setItem("announcement_title", title);
+    localStorage.setItem("announcement_summary", summary);
     localStorage.setItem("announcement_content", content);
-  }, [title, content]);
+  }, [title, summary, content]);
 
   const handle_create_announcement = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -31,6 +35,7 @@ export default function AnnouncementsPage() {
     try {
       const form_data = new FormData();
       form_data.append("title", title);
+      form_data.append("summary", summary);
       form_data.append("content", content);
       
       const result = await create_announcement(form_data);
@@ -45,9 +50,11 @@ export default function AnnouncementsPage() {
           title: "Success",
           description: result.success,
         });
+        set_summary("");
         set_title("");
         set_content("");
         localStorage.removeItem("announcement_title");
+        localStorage.removeItem("announcement_summary");
         localStorage.removeItem("announcement_content");
       }
     } finally {
@@ -67,6 +74,17 @@ export default function AnnouncementsPage() {
             name="title"
             value={title}
             onChange={(e) => set_title(e.target.value)}
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label htmlFor="summary" className="block mb-2">Summary</label>
+          <Input
+            type="text"
+            id="summary"
+            name="summary"
+            value={summary}
+            onChange={(e) => set_summary(e.target.value)}
             required
           />
         </div>

@@ -21,16 +21,17 @@ export async function create_announcement(form_data: FormData) {
   }
 
   const title = form_data.get("title") as string;
+  const summary = form_data.get("summary") as string;
   const content = form_data.get("content") as string;
 
-  if (!title || !content) {
-    return { error: "Title and content are required" };
+  if (!title || !summary || !content) {
+    return { error: "Title, summary, and content are required" };
   }
 
   try {
     const { error } = await supabase
       .from("announcements")
-      .insert({ title, content });
+      .insert({ title, summary, content });
 
     if (error) throw error;
 
