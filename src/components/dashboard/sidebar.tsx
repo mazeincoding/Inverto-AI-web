@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { BarChart, Timer, History } from "lucide-react";
+import { BarChart, Timer, History, MessageSquareIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import Link from "next/link";
@@ -15,6 +15,7 @@ export const Sidebar: React.FC<{ className?: string }> = ({ className }) => {
     { href: "/~/playground", icon: Timer, label: "Playground" },
     { href: "/~/history", icon: History, label: "History" },
     { href: "/~/analytics", icon: BarChart, label: "Analytics" },
+    { href: "/~/feedback", icon: MessageSquareIcon, label: "Feedback" },
   ];
 
   return (
