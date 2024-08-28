@@ -97,12 +97,46 @@ export async function delete_user(
   email: string
 ): Promise<{ error: string } | { success: string }> {
   try {
-    const { error } = await supabase.from("users").delete().eq("email", email);
+    // First, fetch the user's ID
+    const { data: user_data, error: user_error } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .single();
 
-    if (error) throw error;
+    if (user_error || !user_data) {
+      console.error("Error fetching user:", user_error);
+      throw new Error("User not found");
+    }
 
+    const user_id = user_data.id;
+
+    // Delete related records from user_seen_announcements
+    const { error: seen_announcements_error } = await supabase
+      .from("user_seen_announcements")
+      .delete()
+      .eq("user_id", user_id);
+
+    if (seen_announcements_error) {
+      console.error("Error deleting user_seen_announcements:", seen_announcements_error);
+      throw seen_announcements_error;
+    }
+
+    // Now delete the user
+    const { error: delete_error } = await supabase
+      .from("users")
+      .delete()
+      .eq("id", user_id);
+
+    if (delete_error) {
+      console.error("Error deleting user:", delete_error);
+      throw delete_error;
+    }
+
+    console.log(`User ${email} deleted successfully`);
     return { success: `User ${email} has been deleted` };
   } catch (error: any) {
+    console.error("Failed to delete user:", error);
     return { error: "Failed to delete user. Please try again." };
   }
 }
