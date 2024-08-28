@@ -4,6 +4,7 @@ import { Header } from "./header";
 import { HeroSection } from "./hero-section";
 import { FeaturesSection } from "./features-section";
 import { Footer } from "./footer";
+import { FAQSection } from "./faq-section";
 
 export default function Landing() {
   return (
@@ -13,6 +14,7 @@ export default function Landing() {
         <div className="flex flex-col max-w-2xl gap-40">
           <HeroSection />
           <FeaturesSection />
+          <FAQSection />
         </div>
       </main>
       <Footer />
