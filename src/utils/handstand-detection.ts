@@ -27,40 +27,10 @@ export async function load_onnx_model(): Promise<ort.InferenceSession> {
 
   is_loading = true;
   try {
-    console.log("Opening cache");
-    const cache = await caches.open("onnx-model-cache");
-    console.log("Fetching signed URL");
-    const signedUrlResponse = await fetch("/api/get-model-url");
-    if (!signedUrlResponse.ok) {
-      throw new Error("Failed to get signed URL");
-    }
-    const { url: model_url } = await signedUrlResponse.json();
-    console.log("Got model URL:", model_url);
-
-    // Use a consistent cache key
-    const cacheKey = "onnx-model";
-
-    console.log("Checking cache for model");
-    let response = await cache.match(cacheKey);
-
-    if (!response) {
-      console.log("Model not found in cache, fetching from URL");
-      response = await fetch(model_url, {
-        cache: 'no-store', // Bypass the browser's default cache
-        headers: {
-          'Cache-Control': 'max-age=31536000' // Cache for 1 year
-        }
-      });
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch the model: ${response.status} ${response.statusText}`
-        );
-      }
-      console.log("Caching fetched model");
-      const clonedResponse = response.clone();
-      await cache.put(cacheKey, clonedResponse);
-    } else {
-      console.log("Model found in cache");
+    console.log("Fetching model from public directory");
+    const response = await fetch('/model.onnx');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch the model: ${response.status} ${response.statusText}`);
     }
 
     const model_data = await response.arrayBuffer();
