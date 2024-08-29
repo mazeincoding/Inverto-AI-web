@@ -1,6 +1,5 @@
 import * as ort from "onnxruntime-web";
 
-// Add this configuration
 ort.env.wasm.wasmPaths = {
   "ort-wasm.wasm": "/ort-wasm.wasm",
   "ort-wasm-simd.wasm": "/ort-wasm-simd.wasm",
@@ -13,12 +12,10 @@ let is_loading = false;
 
 export async function load_onnx_model(): Promise<ort.InferenceSession> {
   if (session) {
-    console.log("Using existing session");
     return session;
   }
 
   if (is_loading) {
-    console.log("Model is already loading, waiting...");
     while (is_loading) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
@@ -27,17 +24,17 @@ export async function load_onnx_model(): Promise<ort.InferenceSession> {
 
   is_loading = true;
   try {
-    console.log("Fetching model from public directory");
-    const response = await fetch('/model.onnx');
+    const response = await fetch("/final_handstand_detector_08.onnx");
     if (!response.ok) {
-      throw new Error(`Failed to fetch the model: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch the model: ${response.status} ${response.statusText}`
+      );
     }
 
     const model_data = await response.arrayBuffer();
     session = await ort.InferenceSession.create(model_data);
     return session;
   } catch (error) {
-    console.error("Error loading ONNX model:", error);
     throw error;
   } finally {
     is_loading = false;
@@ -94,12 +91,10 @@ export const process_image = async (
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Failed to get canvas context");
 
-  // Center crop
   const size = Math.min(img.width, img.height);
   const x = (img.width - size) / 2;
   const y = (img.height - size) / 2;
 
-  // Resize to 256x256, then center crop to 224x224
   const tempCanvas = document.createElement("canvas");
   tempCanvas.width = 256;
   tempCanvas.height = 256;
