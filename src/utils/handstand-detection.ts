@@ -35,7 +35,15 @@ export async function load_onnx_model(): Promise<ort.InferenceSession> {
     }
 
     const model_data = await response.arrayBuffer();
-    session = await ort.InferenceSession.create(model_data);
+
+    // Configure ONNX Runtime Web options
+    const options: ort.InferenceSession.SessionOptions = {
+      executionProviders: ['wasm'],
+      graphOptimizationLevel: 'all'
+    };
+
+    // Create the session
+    session = await ort.InferenceSession.create(model_data, options);
     return session;
   } catch (error) {
     console.error("Error loading ONNX model:", error);

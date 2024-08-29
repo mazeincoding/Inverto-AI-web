@@ -5,9 +5,10 @@
   "scripts": {
     "dev-https": "node server.js",
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run copy-onnx-wasm && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "copy-onnx-wasm": "cp node_modules/onnxruntime-web/dist/*.wasm public/"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.12.1",
