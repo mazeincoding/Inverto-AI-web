@@ -33,7 +33,7 @@ export const Header = ({ page_title }: { page_title: string }) => {
   };
 
   return (
-    <header className="flex items-center justify-between h-16 px-6 border-b">
+    <header className="flex items-center justify-between h-16 px-6 border-b sticky top-0 bg-background z-50">
       <div className="flex items-center">
         <Sheet>
           <SheetTrigger asChild>
