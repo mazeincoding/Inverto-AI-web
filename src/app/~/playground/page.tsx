@@ -17,6 +17,7 @@ import {
 } from "@/utils/handstand-detection";
 import { Loader2 } from "lucide-react";
 import * as ort from "onnxruntime-web";
+import { save_handstand_history } from "@/actions/history";
 
 const PlaygroundContent: React.FC = () => {
   const [is_session_active, set_is_session_active] = useState(false);
@@ -98,8 +99,17 @@ const PlaygroundContent: React.FC = () => {
       set_last_handstand_time(null);
       set_show_camera(false);
       reset_timer();
+
+      // Save handstand history
+      if (elapsed_time > 0) {
+        const result = await save_handstand_history(elapsed_time, new Date());
+        if (result.error) {
+          console.error("Failed to save handstand history:", result.error);
+          // Optionally, you can show an error message to the user
+        }
+      }
+
       set_elapsed_time(0);
-      // Here you would typically save the session data
     } else {
       set_is_model_loading(true);
       set_is_fullscreen(true);
@@ -166,15 +176,6 @@ const PlaygroundContent: React.FC = () => {
         // Reset the timer immediately when handstand is no longer detected
         reset_timer();
       }
-
-      console.log(
-        "Detection result:",
-        result.is_handstand,
-        "Probability:",
-        result.probability,
-        "Timer running:",
-        timer_running
-      );
     } catch (error) {
       console.error("Error detecting handstand:", error);
     }
@@ -220,7 +221,6 @@ const PlaygroundContent: React.FC = () => {
   }, []);
 
   const handle_camera_start = useCallback(() => {
-    console.log("Camera started successfully");
     set_camera_error(null);
   }, []);
 
