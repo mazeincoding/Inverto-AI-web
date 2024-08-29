@@ -47,6 +47,3 @@ data/waitlist.json
 
 # Ignore development server file
 server.js
-
-# Ignore wasm files
-public/*.wasm
