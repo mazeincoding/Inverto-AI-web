@@ -45,7 +45,9 @@ const PlaygroundContent: React.FC = () => {
   const [model, set_model] = useState<ort.InferenceSession | null>(null);
   const [timer_running, set_timer_running] = useState(false);
   const timer_ref = useRef<NodeJS.Timeout | null>(null);
-  const [handstand_start_time, set_handstand_start_time] = useState<number | null>(null);
+  const [handstand_start_time, set_handstand_start_time] = useState<
+    number | null
+  >(null);
   const [total_handstand_duration, set_total_handstand_duration] = useState(0);
 
   const format_time = (time: number): string => {
@@ -102,7 +104,10 @@ const PlaygroundContent: React.FC = () => {
     if (total_handstand_duration > 0) {
       console.log("Attempting to save handstand history...");
       try {
-        const result = await save_handstand_history(total_handstand_duration, new Date());
+        const result = await save_handstand_history(
+          total_handstand_duration,
+          new Date()
+        );
         console.log("Save handstand history result:", result);
         if (result.error) {
           console.error("Failed to save handstand history:", result.error);
@@ -112,7 +117,9 @@ const PlaygroundContent: React.FC = () => {
         }
       } catch (error) {
         console.error("Error while saving handstand history:", error);
-        set_error("An unexpected error occurred while saving handstand history.");
+        set_error(
+          "An unexpected error occurred while saving handstand history."
+        );
       }
     } else {
       console.log("No handstand detected, not saving history.");
@@ -191,21 +198,34 @@ const PlaygroundContent: React.FC = () => {
         set_last_handstand_time(current_time);
       } else {
         if (handstand_start_time && last_handstand_time) {
-          const handstand_duration = Math.round((last_handstand_time - handstand_start_time) / 1000);
-          set_total_handstand_duration(prev => prev + handstand_duration);
+          const handstand_duration = Math.round(
+            (last_handstand_time - handstand_start_time) / 1000
+          );
+          set_total_handstand_duration((prev) => prev + handstand_duration);
           set_handstand_start_time(null);
         }
       }
 
       if (!timer_running && result.is_handstand) {
         set_timer_running(true);
-      } else if (timer_running && !result.is_handstand && last_handstand_time && current_time - last_handstand_time > 1000) {
+      } else if (
+        timer_running &&
+        !result.is_handstand &&
+        last_handstand_time &&
+        current_time - last_handstand_time > 1000
+      ) {
         set_timer_running(false);
       }
     } catch (error) {
       console.error("Error detecting handstand:", error);
     }
-  }, [is_model_loaded, model, timer_running, handstand_start_time, last_handstand_time]);
+  }, [
+    is_model_loaded,
+    model,
+    timer_running,
+    handstand_start_time,
+    last_handstand_time,
+  ]);
 
   useEffect(() => {
     if (timer_running) {
@@ -252,11 +272,11 @@ const PlaygroundContent: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <Card>
+      <Card className="space-y-4">
         <CardHeader>
           <CardTitle>Handstand Timer</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -314,7 +334,7 @@ const PlaygroundContent: React.FC = () => {
                 <>
                   <Webcam
                     ref={webcam_ref}
-                    mirrored={true}
+                    mirrored={is_front_camera}
                     videoConstraints={{
                       facingMode: is_front_camera ? "user" : "environment",
                       aspectRatio: orientation === "portrait" ? 9 / 16 : 16 / 9,
