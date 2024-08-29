@@ -11,10 +11,10 @@ export function Footer() {
             Your AI-powered handstand timer.
           </p>
           <a
-            href="mailto:hello@invertoai.app"
+            href="mailto:hello@standsync.app"
             className="text-sm text-primary hover:underline"
           >
-            Contact: hello@invertoai.app
+            Contact: hello@standsync.app
           </a>
         </div>
         <div className="flex flex-col items-center md:items-end space-y-2">

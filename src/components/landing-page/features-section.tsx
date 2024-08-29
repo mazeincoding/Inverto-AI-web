@@ -42,7 +42,7 @@ export function FeaturesSection() {
           <div className="space-y-2">
             <FeatureTitle>Your history</FeatureTitle>
             <FeatureDescription>
-              For every handstand you do, Inverto AI saves it to your history,
+              For every handstand you do, StandSync AI saves it to your history,
               so you can look back on your progress.
             </FeatureDescription>
           </div>
@@ -109,7 +109,11 @@ function FeatureItem({
 }) {
   const opacity = useTransform(
     scrollYProgress || new MotionValue(),
-    [(index ?? 0) * 0.25, (index ?? 0) * 0.25 + 0.125, (index ?? 0) * 0.25 + 0.25],
+    [
+      (index ?? 0) * 0.25,
+      (index ?? 0) * 0.25 + 0.125,
+      (index ?? 0) * 0.25 + 0.25,
+    ],
     [0.25, 1, 1]
   );
 
