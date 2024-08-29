@@ -13,10 +13,12 @@ let is_loading = false;
 
 export async function load_onnx_model(): Promise<ort.InferenceSession> {
   if (session) {
+    console.log("Using existing session");
     return session;
   }
 
   if (is_loading) {
+    console.log("Model is already loading, waiting...");
     while (is_loading) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
@@ -25,23 +27,40 @@ export async function load_onnx_model(): Promise<ort.InferenceSession> {
 
   is_loading = true;
   try {
+    console.log("Opening cache");
     const cache = await caches.open("onnx-model-cache");
+    console.log("Fetching signed URL");
     const signedUrlResponse = await fetch("/api/get-model-url");
     if (!signedUrlResponse.ok) {
       throw new Error("Failed to get signed URL");
     }
     const { url: model_url } = await signedUrlResponse.json();
+    console.log("Got model URL:", model_url);
 
-    let response = await cache.match(model_url);
+    // Use a consistent cache key
+    const cacheKey = "onnx-model";
+
+    console.log("Checking cache for model");
+    let response = await cache.match(cacheKey);
 
     if (!response) {
-      response = await fetch(model_url);
+      console.log("Model not found in cache, fetching from URL");
+      response = await fetch(model_url, {
+        cache: 'no-store', // Bypass the browser's default cache
+        headers: {
+          'Cache-Control': 'max-age=31536000' // Cache for 1 year
+        }
+      });
       if (!response.ok) {
         throw new Error(
           `Failed to fetch the model: ${response.status} ${response.statusText}`
         );
       }
-      await cache.put(model_url, response.clone());
+      console.log("Caching fetched model");
+      const clonedResponse = response.clone();
+      await cache.put(cacheKey, clonedResponse);
+    } else {
+      console.log("Model found in cache");
     }
 
     const model_data = await response.arrayBuffer();

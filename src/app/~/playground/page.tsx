@@ -196,6 +196,9 @@ const PlaygroundContent: React.FC = () => {
           set_handstand_start_time(current_time);
         }
         set_last_handstand_time(current_time);
+        if (!timer_running) {
+          set_timer_running(true);
+        }
       } else {
         if (handstand_start_time && last_handstand_time) {
           const handstand_duration = Math.round(
@@ -204,17 +207,12 @@ const PlaygroundContent: React.FC = () => {
           set_total_handstand_duration((prev) => prev + handstand_duration);
           set_handstand_start_time(null);
         }
-      }
-
-      if (!timer_running && result.is_handstand) {
-        set_timer_running(true);
-      } else if (
-        timer_running &&
-        !result.is_handstand &&
-        last_handstand_time &&
-        current_time - last_handstand_time > 1000
-      ) {
-        set_timer_running(false);
+        if (
+          timer_running &&
+          (!last_handstand_time || current_time - last_handstand_time > 1000)
+        ) {
+          set_timer_running(false);
+        }
       }
     } catch (error) {
       console.error("Error detecting handstand:", error);
@@ -334,7 +332,7 @@ const PlaygroundContent: React.FC = () => {
                 <>
                   <Webcam
                     ref={webcam_ref}
-                    mirrored={is_front_camera}
+                    mirrored={true}
                     videoConstraints={{
                       facingMode: is_front_camera ? "user" : "environment",
                       aspectRatio: orientation === "portrait" ? 9 / 16 : 16 / 9,
