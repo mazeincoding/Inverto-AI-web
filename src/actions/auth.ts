@@ -3,7 +3,6 @@
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "crypto";
-import nodemailer from "nodemailer";
 import { cookies } from "next/headers";
 import { User } from "@/types/user";
 import { send_email } from "@/utils/email";
