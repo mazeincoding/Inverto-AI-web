@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Trash2 } from "lucide-react";
+import { AlertCircle, Trash2, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { get_handstand_history, delete_handstand_session } from "@/actions/history";
 import { Layout } from "@/components/dashboard/layout";
@@ -23,6 +23,7 @@ export default function HistoryPage() {
   const [error, set_error] = useState<string | null>(null);
   const [offset, set_offset] = useState(0);
   const [has_more, set_has_more] = useState(true);
+  const [deleting_sessions, set_deleting_sessions] = useState<Set<string>>(new Set());
 
   const fetch_history = async (reset = false) => {
     set_loading(true);
@@ -45,12 +46,18 @@ export default function HistoryPage() {
   }, []);
 
   const handle_delete = async (id: string) => {
+    set_deleting_sessions(prev => new Set(prev).add(id));
     const result = await delete_handstand_session(id);
     if ("success" in result) {
       set_history(history.filter(session => session.id !== id));
     } else {
       set_error(result.error);
     }
+    set_deleting_sessions(prev => {
+      const new_set = new Set(prev);
+      new_set.delete(id);
+      return new_set;
+    });
   };
 
   return (
@@ -99,8 +106,13 @@ export default function HistoryPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handle_delete(session.id)}
+                          disabled={deleting_sessions.has(session.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          {deleting_sessions.has(session.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
                         </Button>
                       </TableCell>
                     </TableRow>
