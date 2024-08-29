@@ -2,10 +2,10 @@ import * as ort from "onnxruntime-web";
 
 // Add this configuration
 ort.env.wasm.wasmPaths = {
-  'ort-wasm.wasm': '/ort-wasm.wasm',
-  'ort-wasm-simd.wasm': '/ort-wasm-simd.wasm',
-  'ort-wasm-threaded.wasm': '/ort-wasm-threaded.wasm',
-  'ort-wasm-simd-threaded.wasm': '/ort-wasm-simd-threaded.wasm'
+  "ort-wasm.wasm": "/ort-wasm.wasm",
+  "ort-wasm-simd.wasm": "/ort-wasm-simd.wasm",
+  "ort-wasm-threaded.wasm": "/ort-wasm-threaded.wasm",
+  "ort-wasm-simd-threaded.wasm": "/ort-wasm-simd-threaded.wasm",
 };
 
 let session: ort.InferenceSession | null = null;
@@ -26,28 +26,26 @@ export async function load_onnx_model(): Promise<ort.InferenceSession> {
   is_loading = true;
   try {
     const cache = await caches.open("onnx-model-cache");
-    const model_url = "/api/proxy-model";
+    const signedUrlResponse = await fetch("/api/get-model-url");
+    if (!signedUrlResponse.ok) {
+      throw new Error("Failed to get signed URL");
+    }
+    const { url: model_url } = await signedUrlResponse.json();
+
     let response = await cache.match(model_url);
 
     if (!response) {
-      console.log("Model not found in cache, fetching from server...");
       response = await fetch(model_url);
       if (!response.ok) {
         throw new Error(
           `Failed to fetch the model: ${response.status} ${response.statusText}`
         );
       }
-      console.log("Model fetched successfully, caching...");
       await cache.put(model_url, response.clone());
-    } else {
-      console.log("Model found in cache");
     }
 
-    console.log("Converting response to ArrayBuffer...");
     const model_data = await response.arrayBuffer();
-    console.log("Creating InferenceSession...");
     session = await ort.InferenceSession.create(model_data);
-    console.log("InferenceSession created successfully");
     return session;
   } catch (error) {
     console.error("Error loading ONNX model:", error);

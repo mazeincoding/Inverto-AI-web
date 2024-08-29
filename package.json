@@ -67,7 +67,7 @@
     "nodemailer": "^6.9.14",
     "nookies": "^2.5.2",
     "onnxruntime-node": "^1.19.0",
-    "onnxruntime-web": "^1.18.0",
+    "onnxruntime-web": "^1.14.0",
     "prisma": "^5.18.0",
     "react": "^18",
     "react-day-picker": "^8.10.1",
