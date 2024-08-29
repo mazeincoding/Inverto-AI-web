@@ -18,7 +18,12 @@ export async function load_onnx_model(): Promise<ort.InferenceSession> {
   is_loading = true;
   try {
     const cache = await caches.open("onnx-model-cache");
-    const model_url = "/api/get-model";
+    const signedUrlResponse = await fetch("/api/get-model-url");
+    if (!signedUrlResponse.ok) {
+      throw new Error("Failed to get signed URL");
+    }
+    const { url: model_url } = await signedUrlResponse.json();
+    
     let response = await cache.match(model_url);
 
     if (!response) {
