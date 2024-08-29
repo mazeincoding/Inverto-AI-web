@@ -51,7 +51,7 @@ const PlaygroundContent: React.FC = () => {
   const [handstand_end_time, set_handstand_end_time] = useState<number | null>(
     null
   );
-  const RESET_DELAY = 500;
+  const RESET_DELAY = 0;
   const [handstands, set_handstands] = useState<number[]>([]);
 
   const format_time = (time: number): string => {
