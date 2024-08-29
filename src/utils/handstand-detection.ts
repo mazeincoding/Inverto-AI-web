@@ -17,12 +17,10 @@ export async function load_onnx_model(): Promise<ort.InferenceSession> {
 
   is_loading = true;
   try {
-    console.log("Checking cache for ONNX model...");
     const cache = await caches.open("onnx-model-cache");
     let response = await cache.match("/api/get-model");
 
     if (!response) {
-      console.log("Model not in cache, fetching from server...");
       response = await fetch("/api/get-model");
       if (!response.ok) {
         const error_text = await response.text();
@@ -36,16 +34,12 @@ export async function load_onnx_model(): Promise<ort.InferenceSession> {
           `Failed to fetch the model: ${response.status} ${error_text}`
         );
       }
-      console.log("Caching model for future use...");
       await cache.put("/api/get-model", response.clone());
     } else {
-      console.log("Model found in cache");
     }
 
-    console.log("Creating ONNX session...");
     const model_data = await response.arrayBuffer();
     session = await ort.InferenceSession.create(model_data);
-    console.log("ONNX session created successfully");
     return session;
   } finally {
     is_loading = false;
@@ -68,10 +62,6 @@ const preprocess_image = (image_data: ImageData): Float32Array => {
     }
   }
 
-  console.log(`Preprocessed image shape: [1, 3, 224, 224]`);
-  console.log(
-    `First few preprocessed values: ${preprocessed_data.slice(0, 5)}`
-  );
   return preprocessed_data;
 };
 
@@ -83,9 +73,7 @@ const run_inference = async (
   const output_map = await session.run(feeds);
   const output_tensor = output_map.output as ort.Tensor;
   const scores = output_tensor.data as Float32Array;
-  console.log(`Raw model output: [${scores}]`);
   const probability = 1 - scores[0];
-  console.log(`Final probability: ${probability}`);
   return probability;
 };
 
@@ -101,7 +89,6 @@ export const process_image = async (
   const img = new window.Image();
   img.src = image_url;
   await img.decode();
-  console.log(`Original image dimensions: ${img.width}x${img.height}`);
 
   const canvas = document.createElement("canvas");
   canvas.width = 224;
