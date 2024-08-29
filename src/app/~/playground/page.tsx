@@ -45,6 +45,8 @@ const PlaygroundContent: React.FC = () => {
   const [model, set_model] = useState<ort.InferenceSession | null>(null);
   const [timer_running, set_timer_running] = useState(false);
   const timer_ref = useRef<NodeJS.Timeout | null>(null);
+  const [handstand_start_time, set_handstand_start_time] = useState<number | null>(null);
+  const [total_handstand_duration, set_total_handstand_duration] = useState(0);
 
   const format_time = (time: number): string => {
     const minutes = Math.floor(time / 60);
@@ -91,25 +93,42 @@ const PlaygroundContent: React.FC = () => {
     };
   }, []);
 
-  const handle_start_stop = async (): Promise<void> => {
-    if (is_session_active) {
-      set_is_session_active(false);
-      set_is_fullscreen(false);
-      set_session_start_time(null);
-      set_last_handstand_time(null);
-      set_show_camera(false);
-      reset_timer();
+  const handle_session_end = async (): Promise<void> => {
+    set_is_session_active(false);
+    set_is_fullscreen(false);
+    set_show_camera(false);
+    reset_timer();
 
-      // Save handstand history
-      if (elapsed_time > 0) {
-        const result = await save_handstand_history(elapsed_time, new Date());
+    if (total_handstand_duration > 0) {
+      console.log("Attempting to save handstand history...");
+      try {
+        const result = await save_handstand_history(total_handstand_duration, new Date());
+        console.log("Save handstand history result:", result);
         if (result.error) {
           console.error("Failed to save handstand history:", result.error);
-          // Optionally, you can show an error message to the user
+          set_error(`Failed to save handstand history: ${result.error}`);
+        } else {
+          console.log("Handstand history saved successfully");
         }
+      } catch (error) {
+        console.error("Error while saving handstand history:", error);
+        set_error("An unexpected error occurred while saving handstand history.");
       }
+    } else {
+      console.log("No handstand detected, not saving history.");
+    }
 
-      set_elapsed_time(0);
+    // Reset state
+    set_elapsed_time(0);
+    set_session_start_time(null);
+    set_last_handstand_time(null);
+    set_handstand_start_time(null);
+    set_total_handstand_duration(0);
+  };
+
+  const handle_start_stop = async (): Promise<void> => {
+    if (is_session_active) {
+      await handle_session_end();
     } else {
       set_is_model_loading(true);
       set_is_fullscreen(true);
@@ -136,10 +155,8 @@ const PlaygroundContent: React.FC = () => {
     }
   };
 
-  const handle_close_session = (): void => {
-    set_is_session_active(false);
-    set_is_fullscreen(false);
-    set_show_camera(false);
+  const handle_close_session = async (): Promise<void> => {
+    await handle_session_end();
   };
 
   const handle_toggle_camera = (): void => {
@@ -165,24 +182,30 @@ const PlaygroundContent: React.FC = () => {
       const result: DetectionResult = await process_image(image_src, model);
       set_is_handstand_detected(result.is_handstand);
 
+      const current_time = Date.now();
+
       if (result.is_handstand) {
-        if (!timer_running) {
-          // Start the timer if it's not already running
-          set_timer_running(true);
-          set_session_start_time(Date.now());
+        if (!handstand_start_time) {
+          set_handstand_start_time(current_time);
         }
-        set_last_handstand_time(Date.now());
+        set_last_handstand_time(current_time);
       } else {
-        // Only reset the timer if it's been more than 3 seconds since the last handstand
-        const current_time = Date.now();
-        if (last_handstand_time && current_time - last_handstand_time > 3000) {
-          reset_timer();
+        if (handstand_start_time && last_handstand_time) {
+          const handstand_duration = Math.round((last_handstand_time - handstand_start_time) / 1000);
+          set_total_handstand_duration(prev => prev + handstand_duration);
+          set_handstand_start_time(null);
         }
+      }
+
+      if (!timer_running && result.is_handstand) {
+        set_timer_running(true);
+      } else if (timer_running && !result.is_handstand && last_handstand_time && current_time - last_handstand_time > 1000) {
+        set_timer_running(false);
       }
     } catch (error) {
       console.error("Error detecting handstand:", error);
     }
-  }, [is_model_loaded, model, timer_running, reset_timer, last_handstand_time]);
+  }, [is_model_loaded, model, timer_running, handstand_start_time, last_handstand_time]);
 
   useEffect(() => {
     if (timer_running) {

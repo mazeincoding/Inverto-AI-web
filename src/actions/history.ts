@@ -98,3 +98,40 @@ export async function get_handstand_history(
     return { error: "Failed to fetch handstand history. Please try again." };
   }
 }
+
+export async function delete_handstand_session(session_id: string) {
+  try {
+    const user_info = await get_user_info();
+
+    if (!user_info) {
+      return { error: "User not authenticated" };
+    }
+
+    const { data: user_data, error: user_error } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", user_info.email)
+      .single();
+
+    if (user_error || !user_data) {
+      console.error("Error fetching user data:", user_error);
+      return { error: "Failed to fetch user data" };
+    }
+
+    const { error: delete_error } = await supabase
+      .from("handstand_history")
+      .delete()
+      .eq("id", session_id)
+      .eq("user_id", user_data.id);
+
+    if (delete_error) {
+      console.error("Error deleting handstand session:", delete_error);
+      return { error: "Failed to delete handstand session. Please try again." };
+    }
+
+    return { success: "Handstand session deleted successfully" };
+  } catch (error) {
+    console.error("Unexpected error deleting handstand session:", error);
+    return { error: "An unexpected error occurred. Please try again." };
+  }
+}

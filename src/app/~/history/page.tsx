@@ -1,93 +1,120 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Layout } from "@/components/dashboard/layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { get_handstand_history } from "@/actions/history";
-import { HandstandHistoryEntry } from "@/types/history";
-import { format_relative_time } from "@/utils/date-formatter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle, Trash2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { get_handstand_history, delete_handstand_session } from "@/actions/history";
+import { Layout } from "@/components/dashboard/layout";
 
-export default function History() {
-  const [history, set_history] = useState<HandstandHistoryEntry[]>([]);
+interface HandstandSession {
+  id: string;
+  duration: number;
+  date: string;
+}
+
+export default function HistoryPage() {
+  const [history, set_history] = useState<HandstandSession[]>([]);
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState<string | null>(null);
-  const [page, set_page] = useState(0);
+  const [offset, set_offset] = useState(0);
   const [has_more, set_has_more] = useState(true);
 
-  const fetch_history = async () => {
+  const fetch_history = async (reset = false) => {
     set_loading(true);
-    const result = await get_handstand_history(10, page * 10);
+    set_error(null);
+    const new_offset = reset ? 0 : offset;
+    const result = await get_handstand_history(10, new_offset);
     set_loading(false);
 
     if ("error" in result) {
-      set_error(
-        result.error || "Failed to fetch handstand history. Please try again."
-      );
-    } else {
-      set_history((prev) => [...prev, ...result.data]);
+      set_error(result.error || "An error occurred");
+    } else if (result.success) {
+      set_history(reset ? result.data : [...history, ...result.data]);
       set_has_more(result.hasMore);
+      set_offset(new_offset + 10);
     }
   };
 
   useEffect(() => {
     fetch_history();
-  }, [page]);
+  }, []);
 
-  const load_more = () => {
-    set_page((prev) => prev + 1);
+  const handle_delete = async (id: string) => {
+    const result = await delete_handstand_session(id);
+    if ("success" in result) {
+      set_history(history.filter(session => session.id !== id));
+    } else {
+      set_error(result.error);
+    }
   };
 
   return (
-    <Layout page_title="History">
-      <Card className="w-full">
+    <Layout page_title="Handstand History">
+      <Card>
         <CardHeader>
-          <CardTitle>Session History</CardTitle>
+          <CardTitle>Your Handstand Sessions</CardTitle>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <p className="text-destructive">{error}</p>
-          ) : loading ? (
-            <p className="text-center mt-4">Loading...</p>
-          ) : history.length === 0 ? (
-            <div className="text-center mt-4">
-              <p className="text-lg mb-2">No handstand sessions yet!</p>
-              <p className="text-sm text-muted-foreground">
-                Your handstand journey starts with your first session. Head to the playground to get started!
-              </p>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {!loading && history.length === 0 ? (
+            <div className="text-center mt-4 py-6">
+              <p className="text-lg text-muted-foreground">Your history will show up here when you start practicing!</p>
             </div>
           ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Duration</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {history.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell>{format_relative_time(entry.date)}</TableCell>
-                      <TableCell>{entry.duration} seconds</TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Duration (seconds)</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading && history.length === 0 ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-8 float-right" /></TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {has_more && (
-                <div className="text-center mt-4">
-                  <Button onClick={load_more}>Load More</Button>
-                </div>
-              )}
-            </>
+                  ))
+                ) : (
+                  history.map((session) => (
+                    <TableRow key={session.id}>
+                      <TableCell>{format(new Date(session.date), "PPP")}</TableCell>
+                      <TableCell>{session.duration}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handle_delete(session.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
+          {has_more && history.length > 0 && (
+            <div className="mt-4 flex justify-center">
+              <Button onClick={() => fetch_history()} disabled={loading}>
+                {loading ? "Loading..." : "Load More"}
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
