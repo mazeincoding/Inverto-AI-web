@@ -45,8 +45,8 @@ export async function save_handstand_history(duration: number, date: Date) {
       });
 
     if (insert_error) {
-      console.error("Error inserting handstand history:", insert_error);
-      return { error: "Failed to save handstand history. Please try again." };
+      console.error("Error inserting history:", insert_error);
+      return { error: "Failed to save history. Please try again." };
     }
 
     return { success: "Handstand history saved successfully" };
@@ -94,8 +94,8 @@ export async function get_handstand_history(
       hasMore: offset + limit < (count || 0),
     };
   } catch (error) {
-    console.error("Error fetching handstand history:", error);
-    return { error: "Failed to fetch handstand history. Please try again." };
+    console.error("Error fetching history:", error);
+    return { error: "Failed to fetch history. Please try again." };
   }
 }
 
@@ -125,8 +125,8 @@ export async function delete_handstand_session(session_id: string) {
       .eq("user_id", user_data.id);
 
     if (delete_error) {
-      console.error("Error deleting handstand session:", delete_error);
-      return { error: "Failed to delete handstand session. Please try again." };
+      console.error("Error deleting session:", delete_error);
+      return { error: "Failed to delete session. Please try again." };
     }
 
     return { success: "Handstand session deleted successfully" };
