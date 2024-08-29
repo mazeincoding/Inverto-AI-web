@@ -173,13 +173,16 @@ const PlaygroundContent: React.FC = () => {
         }
         set_last_handstand_time(Date.now());
       } else {
-        // Reset the timer immediately when handstand is no longer detected
-        reset_timer();
+        // Only reset the timer if it's been more than 3 seconds since the last handstand
+        const current_time = Date.now();
+        if (last_handstand_time && current_time - last_handstand_time > 3000) {
+          reset_timer();
+        }
       }
     } catch (error) {
       console.error("Error detecting handstand:", error);
     }
-  }, [is_model_loaded, model, timer_running, reset_timer]);
+  }, [is_model_loaded, model, timer_running, reset_timer, last_handstand_time]);
 
   useEffect(() => {
     if (timer_running) {
