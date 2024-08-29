@@ -18,29 +18,23 @@ export async function load_onnx_model(): Promise<ort.InferenceSession> {
   is_loading = true;
   try {
     const cache = await caches.open("onnx-model-cache");
-    let response = await cache.match("/api/get-model");
+    const model_url = "/api/get-model";
+    let response = await cache.match(model_url);
 
     if (!response) {
-      response = await fetch("/api/get-model");
+      response = await fetch(model_url);
       if (!response.ok) {
-        const error_text = await response.text();
-        console.error(
-          "Failed to fetch the model. Status:",
-          response.status,
-          "Error:",
-          error_text
-        );
-        throw new Error(
-          `Failed to fetch the model: ${response.status} ${error_text}`
-        );
+        throw new Error(`Failed to fetch the model: ${response.status} ${response.statusText}`);
       }
-      await cache.put("/api/get-model", response.clone());
-    } else {
+      await cache.put(model_url, response.clone());
     }
 
     const model_data = await response.arrayBuffer();
     session = await ort.InferenceSession.create(model_data);
     return session;
+  } catch (error) {
+    console.error("Error loading ONNX model:", error);
+    throw error;
   } finally {
     is_loading = false;
   }

@@ -30,29 +30,34 @@ export async function GET() {
   }
   const fileName = "final_handstand_detector_08.onnx";
 
-  console.log("Attempting to fetch model from GCS");
-  console.log("Bucket:", bucketName);
-  console.log("File:", fileName);
-
   try {
-    const [fileContent] = await storage
-      .bucket(bucketName)
-      .file(fileName)
-      .download();
+    const [fileExists] = await storage.bucket(bucketName).file(fileName).exists();
+    if (!fileExists) {
+      return NextResponse.json({ error: "Model file not found" }, { status: 404 });
+    }
 
-    console.log("Model downloaded successfully");
+    const fileStream = storage.bucket(bucketName).file(fileName).createReadStream();
 
-    return new NextResponse(fileContent, {
+    // Create a ReadableStream from the file stream
+    const stream = new ReadableStream({
+      start(controller) {
+        fileStream.on('data', (chunk) => controller.enqueue(chunk));
+        fileStream.on('end', () => controller.close());
+        fileStream.on('error', (error) => controller.error(error));
+      },
+    });
+
+    return new NextResponse(stream, {
       headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="${fileName}"`,
       },
     });
   } catch (error) {
-    console.error("Error downloading the model:", error);
+    console.error("Error streaming the model:", error);
     return NextResponse.json(
       {
-        error: "Failed to download the model",
+        error: "Failed to stream the model",
         details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }
