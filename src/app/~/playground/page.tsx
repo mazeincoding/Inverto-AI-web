@@ -253,7 +253,7 @@ const PlaygroundContent: React.FC = () => {
 
   useEffect(() => {
     if (is_fullscreen && has_camera && show_camera) {
-      detection_interval_ref.current = setInterval(detect_handstand, 500);
+      detection_interval_ref.current = setInterval(detect_handstand, 250);
     } else {
       if (detection_interval_ref.current) {
         clearInterval(detection_interval_ref.current);
