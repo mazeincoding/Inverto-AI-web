@@ -116,14 +116,23 @@ export async function delete_announcement(id: string) {
   }
 
   try {
-    const { error } = await supabase
+    // First, delete related entries in user_seen_announcements
+    const { error: delete_seen_error } = await supabase
+      .from("user_seen_announcements")
+      .delete()
+      .eq("announcement_id", id);
+
+    if (delete_seen_error) throw delete_seen_error;
+
+    // Then, delete the announcement
+    const { error: delete_announcement_error } = await supabase
       .from("announcements")
       .delete()
       .eq("id", id);
 
-    if (error) throw error;
+    if (delete_announcement_error) throw delete_announcement_error;
 
-    return { success: "Announcement deleted successfully" };
+    return { success: "Announcement and related data deleted successfully" };
   } catch (error) {
     console.error("Error deleting announcement:", error);
     return { error: "Failed to delete announcement. Please try again." };
