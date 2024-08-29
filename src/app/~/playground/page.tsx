@@ -49,6 +49,10 @@ const PlaygroundContent: React.FC = () => {
     number | null
   >(null);
   const [total_handstand_duration, set_total_handstand_duration] = useState(0);
+  const [handstand_end_time, set_handstand_end_time] = useState<number | null>(
+    null
+  );
+  const RESET_DELAY = 500;
 
   const format_time = (time: number): string => {
     const minutes = Math.floor(time / 60);
@@ -194,8 +198,10 @@ const PlaygroundContent: React.FC = () => {
       if (result.is_handstand) {
         if (!handstand_start_time) {
           set_handstand_start_time(current_time);
+          set_elapsed_time(0); // Reset timer when a new handstand starts
         }
         set_last_handstand_time(current_time);
+        set_handstand_end_time(null);
         if (!timer_running) {
           set_timer_running(true);
         }
@@ -206,12 +212,15 @@ const PlaygroundContent: React.FC = () => {
           );
           set_total_handstand_duration((prev) => prev + handstand_duration);
           set_handstand_start_time(null);
+          set_handstand_end_time(current_time);
         }
         if (
           timer_running &&
-          (!last_handstand_time || current_time - last_handstand_time > 1000)
+          handstand_end_time &&
+          current_time - handstand_end_time > RESET_DELAY
         ) {
           set_timer_running(false);
+          set_elapsed_time(0); // Reset timer after RESET_DELAY
         }
       }
     } catch (error) {
@@ -223,6 +232,7 @@ const PlaygroundContent: React.FC = () => {
     timer_running,
     handstand_start_time,
     last_handstand_time,
+    handstand_end_time,
   ]);
 
   useEffect(() => {
