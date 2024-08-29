@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,7 @@ export default function HistoryPage() {
   const [has_more, set_has_more] = useState(true);
   const [deleting_sessions, set_deleting_sessions] = useState<Set<string>>(new Set());
 
-  const fetch_history = async (reset = false) => {
+  const fetch_history = useCallback(async (reset = false) => {
     set_loading(true);
     set_error(null);
     const new_offset = reset ? 0 : offset;
@@ -39,11 +39,11 @@ export default function HistoryPage() {
       set_has_more(result.hasMore);
       set_offset(new_offset + 10);
     }
-  };
+  }, [history, offset]);
 
   useEffect(() => {
     fetch_history();
-  }, []);
+  }, [fetch_history]);
 
   const handle_delete = async (id: string) => {
     set_deleting_sessions(prev => new Set(prev).add(id));
