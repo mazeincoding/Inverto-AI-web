@@ -13,6 +13,53 @@ const supabase = createClient(supabase_url, supabase_service_role_key, {
 });
 
 export async function save_handstand_history(duration: number, date: Date) {
+  console.log("Saving handstand history:", duration, date);
+  try {
+    const user_info = await get_user_info();
+
+    if (!user_info) {
+      return { error: "User not authenticated" };
+    }
+
+    const { data: user_data, error: user_error } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", user_info.email)
+      .single();
+
+    if (user_error) {
+      console.error("Error fetching user data:", user_error);
+      return { error: "Failed to fetch user data" };
+    }
+
+    if (!user_data) {
+      return { error: "User not found" };
+    }
+
+    const { error: insert_error } = await supabase
+      .from("handstand_history")
+      .insert({
+        user_id: user_data.id,
+        duration,
+        date,
+      });
+
+    if (insert_error) {
+      console.error("Error inserting handstand history:", insert_error);
+      return { error: "Failed to save handstand history. Please try again." };
+    }
+
+    return { success: "Handstand history saved successfully" };
+  } catch (error) {
+    console.error("Unexpected error saving handstand history:", error);
+    return { error: "An unexpected error occurred. Please try again." };
+  }
+}
+
+export async function get_handstand_history(
+  limit: number = 10,
+  offset: number = 0
+) {
   const user_info = await get_user_info();
 
   if (!user_info) {
@@ -31,17 +78,23 @@ export async function save_handstand_history(duration: number, date: Date) {
       return { error: "Failed to fetch user data" };
     }
 
-    const { error } = await supabase.from("handstand_history").insert({
-      user_id: user_data.id,
-      duration,
-      date,
-    });
+    const { data, error, count } = await supabase
+      .from("handstand_history")
+      .select("*", { count: "exact" })
+      .eq("user_id", user_data.id)
+      .order("date", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
-    return { success: "Handstand history saved successfully" };
+    return {
+      success: true,
+      data,
+      total: count,
+      hasMore: offset + limit < (count || 0),
+    };
   } catch (error) {
-    console.error("Error saving handstand history:", error);
-    return { error: "Failed to save handstand history. Please try again." };
+    console.error("Error fetching handstand history:", error);
+    return { error: "Failed to fetch handstand history. Please try again." };
   }
 }
