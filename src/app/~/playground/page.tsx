@@ -48,11 +48,11 @@ const PlaygroundContent: React.FC = () => {
   const [handstand_start_time, set_handstand_start_time] = useState<
     number | null
   >(null);
-  const [total_handstand_duration, set_total_handstand_duration] = useState(0);
   const [handstand_end_time, set_handstand_end_time] = useState<number | null>(
     null
   );
   const RESET_DELAY = 500;
+  const [handstands, set_handstands] = useState<number[]>([]);
 
   const format_time = (time: number): string => {
     const minutes = Math.floor(time / 60);
@@ -105,19 +105,18 @@ const PlaygroundContent: React.FC = () => {
     set_show_camera(false);
     reset_timer();
 
-    if (total_handstand_duration > 0) {
+    if (handstands.length > 0) {
       console.log("Attempting to save handstand history...");
       try {
-        const result = await save_handstand_history(
-          total_handstand_duration,
-          new Date()
-        );
-        console.log("Save handstand history result:", result);
-        if (result.error) {
-          console.error("Failed to save handstand history:", result.error);
-          set_error(`Failed to save handstand history: ${result.error}`);
-        } else {
-          console.log("Handstand history saved successfully");
+        for (const duration of handstands) {
+          const result = await save_handstand_history(duration, new Date());
+          console.log("Save handstand history result:", result);
+          if (result.error) {
+            console.error("Failed to save handstand history:", result.error);
+            set_error(`Failed to save handstand history: ${result.error}`);
+          } else {
+            console.log("Handstand history saved successfully");
+          }
         }
       } catch (error) {
         console.error("Error while saving handstand history:", error);
@@ -126,7 +125,7 @@ const PlaygroundContent: React.FC = () => {
         );
       }
     } else {
-      console.log("No handstand detected, not saving history.");
+      console.log("No handstands detected, not saving history.");
     }
 
     // Reset state
@@ -134,7 +133,7 @@ const PlaygroundContent: React.FC = () => {
     set_session_start_time(null);
     set_last_handstand_time(null);
     set_handstand_start_time(null);
-    set_total_handstand_duration(0);
+    set_handstands([]);
   };
 
   const handle_start_stop = async (): Promise<void> => {
@@ -210,7 +209,7 @@ const PlaygroundContent: React.FC = () => {
           const handstand_duration = Math.round(
             (last_handstand_time - handstand_start_time) / 1000
           );
-          set_total_handstand_duration((prev) => prev + handstand_duration);
+          set_handstands((prev) => [...prev, handstand_duration]);
           set_handstand_start_time(null);
           set_handstand_end_time(current_time);
         }
@@ -284,7 +283,7 @@ const PlaygroundContent: React.FC = () => {
         <CardHeader>
           <CardTitle>Handstand Timer</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
