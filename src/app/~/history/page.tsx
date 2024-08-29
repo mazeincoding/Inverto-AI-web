@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,49 +31,47 @@ export default function HistoryPage() {
   const [history, set_history] = useState<HandstandSession[]>([]);
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState<string | null>(null);
-  const [offset, set_offset] = useState(0);
   const [has_more, set_has_more] = useState(true);
-  const [deleting_sessions, set_deleting_sessions] = useState<Set<string>>(
-    new Set()
-  );
+  const [deleting_sessions, set_deleting_sessions] = useState<Set<string>>(new Set());
+  
+  const offset_ref = useRef(0);
 
-  const fetch_history = useCallback(
-    async (reset = false) => {
-      set_loading(true);
-      set_error(null);
-      const new_offset = reset ? 0 : offset;
-      const result = await get_handstand_history(10, new_offset);
-      set_loading(false);
+  const fetch_history = useCallback(async (reset = false) => {
+    set_loading(true);
+    set_error(null);
+    if (reset) {
+      offset_ref.current = 0;
+    }
+    const result = await get_handstand_history(10, offset_ref.current);
+    set_loading(false);
 
-      if ("error" in result) {
-        set_error(result.error || "An error occurred");
-      } else if (result.success) {
-        set_history(reset ? result.data : [...history, ...result.data]);
-        set_has_more(result.hasMore);
-        set_offset(new_offset + 10);
-      }
-    },
-    [history, offset]
-  );
+    if ("error" in result) {
+      set_error(result.error || "An error occurred");
+    } else if (result.success) {
+      set_history(prev => reset ? result.data : [...prev, ...result.data]);
+      set_has_more(result.hasMore);
+      offset_ref.current += result.data.length;
+    }
+  }, []);
 
   useEffect(() => {
     fetch_history();
   }, [fetch_history]);
 
-  const handle_delete = async (id: string) => {
-    set_deleting_sessions((prev) => new Set(prev).add(id));
+  const handle_delete = useCallback(async (id: string) => {
+    set_deleting_sessions(prev => new Set(prev).add(id));
     const result = await delete_handstand_session(id);
     if ("success" in result) {
-      set_history(history.filter((session) => session.id !== id));
+      set_history(prev => prev.filter(session => session.id !== id));
     } else {
       set_error(result.error);
     }
-    set_deleting_sessions((prev) => {
+    set_deleting_sessions(prev => {
       const new_set = new Set(prev);
       new_set.delete(id);
       return new_set;
     });
-  };
+  }, []);
 
   return (
     <Layout page_title="History">
@@ -98,7 +96,7 @@ export default function HistoryPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="h-10">
                   <TableHead>Date</TableHead>
                   <TableHead>Duration (seconds)</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -107,7 +105,7 @@ export default function HistoryPage() {
               <TableBody>
                 {loading && history.length === 0
                   ? Array.from({ length: 5 }).map((_, index) => (
-                      <TableRow key={index}>
+                      <TableRow key={index} className="h-10">
                         <TableCell>
                           <Skeleton className="h-4 w-24" />
                         </TableCell>
@@ -115,20 +113,20 @@ export default function HistoryPage() {
                           <Skeleton className="h-4 w-16" />
                         </TableCell>
                         <TableCell>
-                          <Skeleton className="h-8 w-8 float-right" />
+                          <Skeleton className="h-6 w-6 float-right" />
                         </TableCell>
                       </TableRow>
                     ))
                   : history.map((session) => (
-                      <TableRow key={session.id}>
-                        <TableCell>
+                      <TableRow key={session.id} className="h-10">
+                        <TableCell className="py-2">
                           {format(new Date(session.date), "PPP")}
                         </TableCell>
-                        <TableCell>{session.duration}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="py-2">{session.duration}</TableCell>
+                        <TableCell className="text-right py-2">
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="sm"
                             onClick={() => handle_delete(session.id)}
                             disabled={deleting_sessions.has(session.id)}
                           >

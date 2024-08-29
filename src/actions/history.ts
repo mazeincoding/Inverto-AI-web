@@ -85,7 +85,18 @@ export async function get_handstand_history(
       .order("date", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'PGRST103') {
+        // If the offset is out of range, return an empty array
+        return {
+          success: true,
+          data: [],
+          total: count,
+          hasMore: false,
+        };
+      }
+      throw error;
+    }
 
     return {
       success: true,
