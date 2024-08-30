@@ -53,9 +53,6 @@ const PlaygroundContent: React.FC = () => {
   );
   const RESET_DELAY = 0;
   const [handstands, set_handstands] = useState<number[]>([]);
-  const [handstand_probability, set_handstand_probability] = useState<
-    number | null
-  >(null);
 
   const format_time = (time: number): string => {
     const minutes = Math.floor(time / 60);
@@ -194,7 +191,6 @@ const PlaygroundContent: React.FC = () => {
     try {
       const result: DetectionResult = await process_image(image_src, model);
       set_is_handstand_detected(result.is_handstand);
-      set_handstand_probability(result.probability);
 
       const current_time = Date.now();
 
@@ -413,28 +409,21 @@ const PlaygroundContent: React.FC = () => {
                   {format_time(elapsed_time)}
                 </div>
                 {show_camera && (
-                  <div className="flex flex-col items-center space-y-2 bg-background/50 px-4 py-2 rounded">
-                    <div className="flex items-center space-x-2">
-                      {is_handstand_detected ? (
-                        <>
-                          <CheckCircle className="h-6 w-6 text-green-500" />
-                          <span className="text-white font-semibold">
-                            Handstand Detected
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="h-6 w-6 text-red-500" />
-                          <span className="text-white font-semibold">
-                            No Handstand Detected
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    {handstand_probability !== null && (
-                      <div className="text-white text-sm">
-                        Probability: {(handstand_probability * 100).toFixed(2)}%
-                      </div>
+                  <div className="flex items-center space-x-2 bg-background/50 px-4 py-2 rounded">
+                    {is_handstand_detected ? (
+                      <>
+                        <CheckCircle className="h-6 w-6 text-green-500" />
+                        <span className="text-white font-semibold">
+                          Handstand Detected
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-6 w-6 text-red-500" />
+                        <span className="text-white font-semibold">
+                          No Handstand Detected
+                        </span>
+                      </>
                     )}
                   </div>
                 )}
