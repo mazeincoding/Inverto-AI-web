@@ -22,7 +22,7 @@ import { save_handstand_history } from "@/actions/history";
 const PlaygroundContent: React.FC = () => {
   const [is_session_active, set_is_session_active] = useState(false);
   const [elapsed_time, set_elapsed_time] = useState(0);
-  const [is_front_camera, set_is_front_camera] = useState(true);
+  const [is_front_camera, set_is_front_camera] = useState(false);
   const [error, set_error] = useState<string | null>(null);
   const [has_camera, set_has_camera] = useState<boolean | null>(null);
   const [orientation, set_orientation] = useState<"portrait" | "landscape">(
