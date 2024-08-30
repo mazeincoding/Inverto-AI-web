@@ -24,7 +24,7 @@ export async function load_onnx_model(): Promise<ort.InferenceSession> {
 
   is_loading = true;
   try {
-    const response = await fetch("/final_handstand_detector_08.onnx");
+    const response = await fetch("/final_handstand_detector_14.onnx");
     if (!response.ok) {
       throw new Error(
         `Failed to fetch the model: ${response.status} ${response.statusText}`
