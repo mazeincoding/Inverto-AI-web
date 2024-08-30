@@ -433,7 +433,7 @@ const PlaygroundContent: React.FC = () => {
                     </div>
                     {handstand_probability !== null && (
                       <div className="text-white text-sm">
-                        Probability: {(handstand_probability * 100).toFixed(2)}%
+                        Confidence: {(handstand_probability * 100).toFixed(0)}%
                       </div>
                     )}
                   </div>
