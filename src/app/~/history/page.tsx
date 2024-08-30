@@ -32,46 +32,65 @@ export default function HistoryPage() {
   const [loading, set_loading] = useState(true);
   const [error, set_error] = useState<string | null>(null);
   const [has_more, set_has_more] = useState(true);
-  const [deleting_sessions, set_deleting_sessions] = useState<Set<string>>(new Set());
-  
+  const [deleting_session, set_deleting_session] = useState<string | null>(
+    null
+  );
+
   const offset_ref = useRef(0);
 
-  const fetch_history = useCallback(async (reset = false) => {
+  const fetch_history = useCallback(async (is_initial_load = false) => {
+    console.log("Fetching history...");
     set_loading(true);
     set_error(null);
-    if (reset) {
-      offset_ref.current = 0;
-    }
-    const result = await get_handstand_history(10, offset_ref.current);
-    set_loading(false);
 
-    if ("error" in result) {
-      set_error(result.error || "An error occurred");
-    } else if (result.success) {
-      set_history(prev => reset ? result.data : [...prev, ...result.data]);
-      set_has_more(result.hasMore);
-      offset_ref.current += result.data.length;
+    try {
+      const result = await get_handstand_history(10, offset_ref.current);
+      console.log("Fetch result:", result);
+
+      if ("error" in result) {
+        set_error(result.error || "An error occurred");
+      } else if (result.success) {
+        set_history((prev) =>
+          is_initial_load ? result.data : [...prev, ...result.data]
+        );
+        set_has_more(result.hasMore);
+        offset_ref.current += result.data.length;
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+      set_error("An unexpected error occurred");
+    } finally {
+      set_loading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetch_history();
+    console.log("Component mounted, fetching initial history");
+    fetch_history(true);
   }, [fetch_history]);
 
   const handle_delete = useCallback(async (id: string) => {
-    set_deleting_sessions(prev => new Set(prev).add(id));
-    const result = await delete_handstand_session(id);
-    if ("success" in result) {
-      set_history(prev => prev.filter(session => session.id !== id));
-    } else {
-      set_error(result.error);
+    set_deleting_session(id);
+    try {
+      const result = await delete_handstand_session(id);
+      if ("success" in result) {
+        set_history((prev) => prev.filter((session) => session.id !== id));
+      } else {
+        set_error(result.error);
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      set_error("Failed to delete session");
+    } finally {
+      set_deleting_session(null);
     }
-    set_deleting_sessions(prev => {
-      const new_set = new Set(prev);
-      new_set.delete(id);
-      return new_set;
-    });
   }, []);
+
+  console.log("Render state:", {
+    loading,
+    historyLength: history.length,
+    error,
+  });
 
   return (
     <Layout page_title="History">
@@ -122,15 +141,17 @@ export default function HistoryPage() {
                         <TableCell className="py-2">
                           {format(new Date(session.date), "PPP")}
                         </TableCell>
-                        <TableCell className="py-2">{session.duration}</TableCell>
+                        <TableCell className="py-2">
+                          {session.duration}
+                        </TableCell>
                         <TableCell className="text-right py-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handle_delete(session.id)}
-                            disabled={deleting_sessions.has(session.id)}
+                            disabled={deleting_session === session.id}
                           >
-                            {deleting_sessions.has(session.id) ? (
+                            {deleting_session === session.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <Trash2 className="h-4 w-4" />
