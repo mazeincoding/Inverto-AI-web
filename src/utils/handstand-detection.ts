@@ -68,9 +68,7 @@ const run_inference = async (
   const output_map = await session.run(feeds);
   const output_tensor = output_map.output as ort.Tensor;
   const scores = output_tensor.data as Float32Array;
-  // Use Math.max to ensure we don't get negative values
-  // and Math.min to cap it at 1
-  const probability = Math.min(Math.max(scores[0], 0), 1);
+  const probability = 1 - scores[0];
   return probability;
 };
 
